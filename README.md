@@ -48,4 +48,3 @@ entire contents of this folder into the browser. Then click **Commit changes**.
 ## Rebuilding after changes
 Just push any change to GitHub — Actions rebuilds automatically.
 Or go to Actions tab → click "Build Vault APK" → "Run workflow".
-# vault

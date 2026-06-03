@@ -3,7 +3,6 @@ package com.vault.app;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -31,9 +30,8 @@ public class MainActivity extends Activity {
     private static final String TAILSCALE_URL = "http://100.100.10.10:8000";
     private static final int    PROBE_TIMEOUT = 3000;
 
-    private volatile String mResolvedServer = null;
-
-    private WebView           mWebView;
+    private volatile String       mResolvedServer = null;
+    private WebView               mWebView;
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
     private final Handler         mHandler  = new Handler(Looper.getMainLooper());
 
@@ -47,14 +45,8 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String probeAndGetServer() {
-            if (probe(LAN_URL)) {
-                mResolvedServer = LAN_URL;
-                return LAN_URL;
-            }
-            if (probe(TAILSCALE_URL)) {
-                mResolvedServer = TAILSCALE_URL;
-                return TAILSCALE_URL;
-            }
+            if (probe(LAN_URL))       { mResolvedServer = LAN_URL;       return LAN_URL; }
+            if (probe(TAILSCALE_URL)) { mResolvedServer = TAILSCALE_URL; return TAILSCALE_URL; }
             return "";
         }
     }
@@ -64,21 +56,14 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Remove title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-        // Keep screen on
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-        // Apply immersive fullscreen
         applyImmersive();
 
-        // Root layout
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor("#07070a"));
         setContentView(root);
 
-        // WebView
         mWebView = new WebView(this);
         mWebView.setBackgroundColor(Color.parseColor("#07070a"));
         root.addView(mWebView, new FrameLayout.LayoutParams(
@@ -87,41 +72,23 @@ public class MainActivity extends Activity {
         ));
 
         setupWebView();
-
-        // Load bundled HTML immediately — no network needed to open
         mWebView.loadUrl("file:///android_asset/index.html");
     }
 
     @SuppressWarnings("deprecation")
     private void applyImmersive() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // API 30+ — proper edge-to-edge
-            getWindow().setDecorFitsSystemWindows(false);
-            android.view.WindowInsetsController wic = getWindow().getInsetsController();
-            if (wic != null) {
-                wic.hide(
-                    android.view.WindowInsets.Type.statusBars() |
-                    android.view.WindowInsets.Type.navigationBars()
-                );
-                wic.setSystemBarsBehavior(
-                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                );
-            }
-        } else {
-            // API 21–29 — legacy immersive flags
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            );
-        }
+        // Works on all API levels 21+ without any class-load issues
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        );
     }
 
-    // ── WebView setup ─────────────────────────────────────────────────────────
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebView() {
         WebSettings s = mWebView.getSettings();
@@ -149,7 +116,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        // Full-screen video support
         mWebView.setWebChromeClient(new WebChromeClient() {
             private View mCustomView;
             private CustomViewCallback mCb;
@@ -174,7 +140,6 @@ public class MainActivity extends Activity {
         });
     }
 
-    // ── Network probe ─────────────────────────────────────────────────────────
     private boolean probe(String base) {
         try {
             HttpURLConnection c = (HttpURLConnection) new URL(base + "/health").openConnection();
@@ -189,7 +154,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ── Back button ───────────────────────────────────────────────────────────
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && mWebView.canGoBack()) {
@@ -199,21 +163,13 @@ public class MainActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
     @Override
     protected void onResume() {
         super.onResume();
         mWebView.onResume();
-        applyImmersive(); // re-apply after returning from another app
+        applyImmersive();
     }
 
-    @Override
-    protected void onPause()   { super.onPause();   mWebView.onPause(); }
-
-    @Override
-    protected void onDestroy() {
-        mExecutor.shutdownNow();
-        mWebView.destroy();
-        super.onDestroy();
-    }
+    @Override protected void onPause()   { super.onPause();   mWebView.onPause(); }
+    @Override protected void onDestroy() { mExecutor.shutdownNow(); mWebView.destroy(); super.onDestroy(); }
 }
