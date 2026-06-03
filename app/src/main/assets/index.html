@@ -1250,11 +1250,17 @@ function exitConfirm(){
   $('exit-modal').classList.remove('open');
   S.items.forEach(i=>{ if(i._local) try{ URL.revokeObjectURL(i._local); }catch(e){} });
   _exitConfirmed=true;
-  if(window.history.length>1){
-    window.history.go(-window.history.length);
-    setTimeout(()=>window.location.replace('about:blank'),300);
+  if(window.VaultBridge && window.VaultBridge.exitApp){
+    // Native Android — close the app properly
+    window.VaultBridge.exitApp();
   } else {
-    window.location.replace('about:blank');
+    // Browser fallback
+    if(window.history.length>1){
+      window.history.go(-window.history.length);
+      setTimeout(()=>window.location.replace('about:blank'),300);
+    } else {
+      window.location.replace('about:blank');
+    }
   }
 }
 
@@ -1428,13 +1434,17 @@ function toggleLayout(){
 // DEVICE DIRECTORY PICKER
 // ════════════════════════════════
 async function pickDirectory(){
-  // Chrome on Android doesn't support showDirectoryPicker — use webkitdirectory input instead
-  const hasNewAPI = typeof window.showDirectoryPicker === 'function';
-
-  if(hasNewAPI){
-    await _pickDirectoryNew();
+  if(window.VaultBridge && window.VaultBridge.listDirectories){
+    // Native Android — use bridge to list and browse directories
+    await _pickDirectoryNative();
   } else {
-    _pickDirectoryFallback();
+    // Browser fallback
+    const hasNewAPI = typeof window.showDirectoryPicker === 'function';
+    if(hasNewAPI){
+      await _pickDirectoryNew();
+    } else {
+      _pickDirectoryFallback();
+    }
   }
 }
 
@@ -1477,6 +1487,159 @@ async function pickDirectoryWithBatches(dir){
   for(let i=0;i<media.length;i+=MEDIA_BATCH) await processBatch(media.slice(i,i+MEDIA_BATCH));
 }
 
+async function _pickDirectoryNative(){
+  // Request storage permission first
+  const granted = await new Promise(resolve=>{
+    window.VaultBridge.requestStoragePermission('window._storagePermResult');
+    window._storagePermResult = (ok) => resolve(ok);
+  });
+  if(!granted){
+    alert('Storage permission is required to browse device files.');
+    return;
+  }
+
+  // Show native directory browser modal
+  return new Promise((resolve)=>{
+    let currentPath = 'root';
+    const pathStack = [];
+
+    const modal = document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(7,7,10,.95);display:flex;flex-direction:column;backdrop-filter:blur(4px)';
+
+    const header = document.createElement('div');
+    header.style.cssText='display:flex;align-items:center;gap:10px;padding:16px 16px 10px;border-bottom:1px solid #1e1e28';
+
+    const backBtn = document.createElement('button');
+    backBtn.innerHTML='<i class="ti ti-arrow-left"></i>';
+    backBtn.style.cssText='background:none;border:none;color:#b8ff57;font-size:18px;padding:4px 8px;cursor:pointer;display:none';
+
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText='flex:1;font-size:14px;font-weight:500;color:var(--text);letter-spacing:.02em';
+    titleEl.textContent='Choose a folder';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML='<i class="ti ti-x"></i>';
+    closeBtn.style.cssText='background:none;border:none;color:var(--text3);font-size:18px;padding:4px 8px;cursor:pointer';
+
+    header.appendChild(backBtn);
+    header.appendChild(titleEl);
+    header.appendChild(closeBtn);
+
+    const list = document.createElement('div');
+    list.style.cssText='flex:1;overflow-y:auto;padding:8px 0';
+
+    const loadBtn = document.createElement('div');
+    loadBtn.style.cssText='padding:16px;border-top:1px solid #1e1e28';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.style.cssText='width:100%;padding:13px;background:#b8ff57;color:#07070a;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.04em';
+    confirmBtn.textContent='LOAD THIS FOLDER';
+    confirmBtn.style.display='none';
+    loadBtn.appendChild(confirmBtn);
+
+    modal.appendChild(header);
+    modal.appendChild(list);
+    modal.appendChild(loadBtn);
+    document.body.appendChild(modal);
+
+    function showDirs(path){
+      currentPath = path;
+      list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Loading\u2026</div>';
+      confirmBtn.style.display = path!=='root'?'block':'none';
+      backBtn.style.display = pathStack.length>0?'block':'none';
+
+      const dirs = JSON.parse(window.VaultBridge.listDirectories(path));
+      list.innerHTML='';
+      if(!dirs.length){
+        list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No subfolders found</div>';
+        return;
+      }
+      dirs.forEach(d=>{
+        const row = document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #111116;active:background:#1a1a22';
+        row.innerHTML=`<i class="ti ti-folder" style="color:#b8ff57;font-size:18px;flex-shrink:0"></i><span style="flex:1;font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</span><i class="ti ti-chevron-right" style="color:var(--text3);font-size:14px"></i>`;
+        row.addEventListener('click',()=>{
+          pathStack.push(currentPath);
+          titleEl.textContent=d.name;
+          showDirs(d.path);
+        });
+        list.appendChild(row);
+      });
+    }
+
+    backBtn.addEventListener('click',()=>{
+      if(pathStack.length>0){
+        currentPath=pathStack.pop();
+        titleEl.textContent=pathStack.length===0?'Choose a folder':currentPath.split('/').pop();
+        showDirs(currentPath);
+      }
+    });
+
+    closeBtn.addEventListener('click',()=>{
+      document.body.removeChild(modal);
+      resolve();
+    });
+
+    confirmBtn.addEventListener('click',()=>{
+      document.body.removeChild(modal);
+      _loadNativeDirectory(currentPath);
+      resolve();
+    });
+
+    showDirs('root');
+  });
+}
+
+async function _loadNativeDirectory(dirPath){
+  const btn=$('btn-device'), ico=$('dev-ico');
+  btn.disabled=true; ico.className='ti ti-loader-2';
+  $('empty').style.display='none';
+  $('scan-progress').style.display='flex';
+  $('scan-count').textContent='0 files found';
+
+  // Revoke existing local URLs
+  S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
+  S.items=[]; _imgElCache.clear();
+  S.pagination={all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
+  hideEndOfList(); render(); updateCnt(); updateBadges();
+
+  const folderName = dirPath.split('/').pop() || dirPath;
+  $('dir-tag').style.display='flex';
+  $('dir-name').textContent=folderName;
+
+  try{
+    // Get all media files from native bridge
+    const files = JSON.parse(window.VaultBridge.listMediaFiles(dirPath));
+    const BATCH=30;
+    for(let i=0;i<files.length;i+=BATCH){
+      const batch=files.slice(i,i+BATCH);
+      for(const f of batch){
+        const item={
+          id: f.path+'_'+f.modified,
+          name: f.name,
+          type: f.type,
+          ext: '.'+f.name.split('.').pop().toLowerCase(),
+          size: f.size,
+          modified: f.modified,
+          width:null, height:null, duration:null,
+          // Use file:// URL directly — WebView can access local files
+          _local: 'file://'+f.path,
+          _isLocal: true,
+        };
+        S.items.push(item);
+        $('scan-count').textContent=S.items.length+' files found';
+      }
+      doSort(); render(); updateCnt(); updateBadges();
+      await new Promise(r=>setTimeout(r,0));
+    }
+    if(!S.items.length) $('empty').style.display='flex';
+  }catch(e){
+    console.error('Native dir load error:', e);
+  }finally{
+    $('scan-progress').style.display='none';
+    btn.disabled=false; ico.className='ti ti-folder-open';
+  }
+}
+
 async function _pickDirectoryNew(){
   const btn=$('btn-device'), ico=$('dev-ico');
   btn.disabled=true; ico.className='ti ti-loader-2';
@@ -1487,9 +1650,7 @@ async function _pickDirectoryNew(){
     const dir=await window.showDirectoryPicker({mode:'read'});
     $('dir-tag').style.display='flex';
     $('dir-name').textContent=dir.name;
-    // Revoke any existing local object URLs before clearing
     S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
-    // Clear ALL items (server + local) so local data starts fresh
     S.items=[];
     _imgElCache.clear();
     S.pagination={all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
@@ -1608,13 +1769,8 @@ async function walkDir(dirHandle, basePath, count, onCount){
 // SERVER FETCH
 // ════════════════════════════════
 async function fetchServer(){
-  if(S.loading) return;
-  if(!_vaultToken){
-    showAuthModal();
-    return;
-  }
-  // Already authenticated — show directory picker
-  showDirModal();
+  // Always probe and connect — auth happens after successful probe
+  doFetchServer(false);
 }
 
 async function doFetchServer(skipHealth=false){
@@ -1622,43 +1778,75 @@ async function doFetchServer(skipHealth=false){
   const btn=$('btn-srv'), ico=$('srv-ico');
   btn.classList.add('loading'); ico.className='ti ti-loader-2';
   setDot('loading');
+
   try{
-    // When running inside the Android WebView, probe LAN then Tailscale
-    // via the native bridge before making any API calls.
-    if(window.VaultBridge && window.VaultBridge.probeAndGetServer){
-      const resolved = window.VaultBridge.probeAndGetServer(); // sync, runs on bridge thread
-      if(!resolved){
+    if(window.VaultBridge && window.VaultBridge.probeServer){
+      // Show probe overlay
+      showProbeOverlay('Connecting\u2026');
+      // Async bridge probe — result comes back via _probeResult callback
+      const resolvedUrl = await new Promise((resolve)=>{
+        window._probeUpdate = (type, msg) => showProbeOverlay(msg);
+        window._probeResult = (url) => resolve(url);
+        window.VaultBridge.probeServer('window._probeResult');
+      });
+      hideProbeOverlay();
+      if(!resolvedUrl){
         throw new Error('unreachable');
       }
-      // Update the runtime SERVER value so all subsequent fetches use it
-      window._resolvedServer = resolved;
-    }
-    if(!skipHealth){
-      const srvUrl = window._resolvedServer || SERVER;
-      const r=await fetch(srvUrl+'/health',{signal:AbortSignal.timeout(4000)});
+      window._resolvedServer = resolvedUrl;
+    } else if(!skipHealth){
+      // Browser fallback — direct health check
+      const r=await fetch(getServer()+'/health',{signal:AbortSignal.timeout(4000)});
       if(!r.ok) throw new Error();
     }
     setSrvStatus(true);
-    // Close sidebar and backdrop on all screen sizes
     closeSidebarMobile();
     $('sidebar').classList.add('collapsed');
-    // Revoke local object URLs to free memory and prevent caching
     S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
-    // Clear ALL items so server data doesn't mix with local
     S.items=[];
     _imgElCache.clear();
     S.pagination = {all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
     hideEndOfList();
-    await loadPage(0,true);
-    setupScroll();
+    // If token exists, go straight to fetching; otherwise show auth modal
+    if(_vaultToken){
+      await loadPage(0,true);
+      setupScroll();
+    } else {
+      showAuthModal();
+    }
     setDot('idle');
   }catch(e){
+    hideProbeOverlay();
     setSrvStatus(false,'Unreachable');
     setDot('error');
     setTimeout(()=>setDot('idle'),3000);
   }finally{
     btn.classList.remove('loading'); ico.className='ti ti-server-2';
   }
+}
+
+function showProbeOverlay(msg){
+  let ov=$('probe-overlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='probe-overlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(7,7,10,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;backdrop-filter:blur(4px)';
+    const spin=document.createElement('div');
+    spin.id='probe-spin';
+    spin.style.cssText='width:32px;height:32px;border:2px solid #1e1e28;border-top-color:#b8ff57;border-radius:50%;animation:spin .7s linear infinite';
+    const txt=document.createElement('div');
+    txt.id='probe-txt';
+    txt.style.cssText='font-size:13px;color:#5a5a6e;font-family:inherit;letter-spacing:.04em';
+    ov.appendChild(spin);
+    ov.appendChild(txt);
+    document.body.appendChild(ov);
+  }
+  $('probe-txt').textContent=msg;
+  ov.style.display='flex';
+}
+function hideProbeOverlay(){
+  const ov=$('probe-overlay');
+  if(ov) ov.style.display='none';
 }
 
 async function loadPage(offset, reset=false){
