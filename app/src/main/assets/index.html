@@ -1,0 +1,2973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#0c0c10"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<title>Vault</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;height:100dvh;overflow:hidden}
+body{height:100%;height:100dvh;overflow:hidden}
+:root{
+  --bg:#07070a;--bg1:#0c0c10;--bg2:#111116;--bg3:#18181e;--bg4:#202028;
+  --border:rgba(255,255,255,0.05);--border2:rgba(255,255,255,0.1);
+  --text:#dddde4;--text2:#6e6e7e;--text3:#3a3a46;
+  --accent:#b8ff57;--accent-dim:rgba(184,255,87,0.1);
+  --red:#ff5f5f;--blue:#6fa3ff;
+  --r:7px;--r-lg:12px;--r-xl:18px;
+  --sidebar:220px;--topbar:50px;--mini:68px;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;display:flex;flex-direction:column;padding-top:var(--sat);padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar)}
+img{-webkit-user-drag:none;user-select:none}
+
+/* ═══ TOPBAR ═══ */
+.topbar{
+  height:var(--topbar);flex-shrink:0;
+  display:flex;align-items:center;gap:8px;padding:0 14px;
+  background:var(--bg1);border-bottom:1px solid var(--border);
+  position:relative;z-index:80;
+}
+.sb-toggle{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);cursor:pointer;color:var(--text2);transition:color .15s,background .15s;flex-shrink:0}
+.sb-toggle:hover{color:var(--text);background:var(--bg3)}
+.sb-toggle i{font-size:17px}
+.wordmark{font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.18em;color:var(--accent)}
+.topbar-space{flex:1}
+
+/* fetch indicator dot */
+.fetch-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--text3);flex-shrink:0;
+  transition:background .3s,box-shadow .3s;
+  cursor:default;
+}
+.fetch-dot.loading{background:var(--accent);box-shadow:0 0 6px var(--accent);animation:dotpulse 1s ease infinite}
+.fetch-dot.error{background:var(--red);box-shadow:0 0 6px var(--red)}
+@keyframes dotpulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.tb-btn{
+  display:flex;align-items:center;gap:5px;height:30px;padding:0 11px;
+  background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);
+  color:var(--text2);font-size:11.5px;font-family:inherit;cursor:pointer;
+  white-space:nowrap;transition:color .15s,border-color .15s,background .15s;position:relative;
+  -webkit-tap-highlight-color:transparent;
+}
+.tb-btn i{font-size:14px}
+.tb-btn:hover,.tb-btn:active{color:var(--text);border-color:rgba(255,255,255,.16)}
+.tb-btn.on{color:var(--accent);border-color:rgba(184,255,87,.3);background:var(--accent-dim)}
+.tb-btn:disabled{opacity:.35;pointer-events:none}
+
+.sort-drop{
+  display:none;position:absolute;top:calc(100% + 6px);right:0;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-lg);
+  padding:5px;min-width:185px;z-index:300;box-shadow:0 20px 50px rgba(0,0,0,.85);
+}
+.sort-drop.open{display:block;animation:viewerSlideUp .18s cubic-bezier(.25,.46,.45,.94) both}
+.sort-opt{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--r);font-size:12px;color:var(--text2);cursor:pointer;transition:background .1s,color .1s}
+.sort-opt i{font-size:13px}
+.sort-opt:hover{background:var(--bg3);color:var(--text)}
+.sort-opt.sel{color:var(--accent)}
+
+/* ═══ LAYOUT ═══ */
+.layout-body{display:flex;flex:1;overflow:hidden;position:relative}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{
+  width:var(--sidebar);background:var(--bg1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;
+  transition:width .22s cubic-bezier(.4,0,.2,1),opacity .18s;
+}
+.sidebar.collapsed{width:0;opacity:0;pointer-events:none}
+.sb-inner{width:var(--sidebar);display:flex;flex-direction:column;height:100%;flex-shrink:0}
+.nav-sect{padding:16px 11px 6px}
+.nav-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--text3);text-transform:uppercase;padding:0 5px;margin-bottom:6px}
+.nav-item{
+  display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:var(--r);
+  font-size:13px;color:var(--text2);cursor:pointer;border:1px solid transparent;
+  transition:background .12s,color .12s;-webkit-tap-highlight-color:transparent;
+}
+.nav-item i{font-size:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--text3);background:var(--bg3);border-radius:20px;padding:1px 8px;min-width:24px;text-align:center}
+.nav-item:hover,.nav-item:active{background:var(--bg2);color:var(--text)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(184,255,87,.12)}
+.nav-item.active .nav-badge{color:var(--accent);background:rgba(184,255,87,.1)}
+.sb-div{height:1px;background:var(--border);margin:6px 11px}
+.sb-space{flex:1}
+.sb-footer{padding:11px;padding-bottom:calc(18px + var(--sab))}
+.srv-row{display:flex;align-items:center;gap:6px;padding:0 2px 8px;font-size:10.5px;color:var(--text3)}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s,box-shadow .3s}
+.sdot.ok{background:var(--accent);box-shadow:0 0 5px var(--accent)}
+.sdot.err{background:var(--red)}
+.btn-server{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);
+  color:var(--text2);font-size:12px;font-family:inherit;cursor:pointer;
+  transition:color .15s,border-color .15s;-webkit-tap-highlight-color:transparent;
+}
+.btn-server i{font-size:15px}
+.btn-server:hover{color:var(--accent);border-color:rgba(184,255,87,.25)}
+.btn-server.loading{color:var(--accent);animation:pulse 1s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ═══ MAIN ═══ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.main-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px 9px;flex-shrink:0;border-bottom:1px solid var(--border);
+}
+.section-title{font-size:12.5px;color:var(--text2);min-width:0}
+.section-title b{color:var(--text);font-weight:500}
+.count-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 9px;white-space:nowrap}
+.dir-tag{font-size:10.5px;color:var(--text3);display:none;align-items:center;gap:4px;min-width:0;overflow:hidden}
+.dir-tag i{font-size:12px;flex-shrink:0}
+.dir-tag span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* scroll */
+.g-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 12px 80px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+.g-scroll::-webkit-scrollbar{width:3px}
+.g-scroll::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+
+/* ── GRID ──
+   Row-by-row, items contained (not cropped), no names */
+.g-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:6px;
+}
+@media(max-width:600px){.g-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:400px){.g-grid{grid-template-columns:repeat(2,1fr)}}
+
+.g-grid .card{border-radius:var(--r-lg);overflow:hidden;cursor:pointer;position:relative;background:var(--bg2);border:1px solid var(--border);transition:opacity .15s;aspect-ratio:1}
+.g-grid .card:active{opacity:.75}
+.g-grid .card-img{width:100%;height:100%;object-fit:contain;display:block;background:var(--bg2)}
+.g-grid .card-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text3)}
+.g-grid .card-ph i{font-size:26px}
+.g-grid .card-meta{display:none}  /* no names in grid */
+.g-grid .card-badge{position:absolute;bottom:5px;right:5px;top:auto;left:auto}
+
+/* ── MASONRY ──
+   Row-by-row using CSS grid with auto rows.
+   Landscape = span 2 cols, portrait = span 1 col. */
+.g-masonry{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  align-items:start;
+}
+@media(max-width:900px){.g-masonry{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.g-masonry{grid-template-columns:repeat(2,1fr)}}
+
+.g-masonry .card{
+  border-radius:var(--r-lg);overflow:hidden;cursor:pointer;position:relative;
+  background:var(--bg2);border:1px solid var(--border);transition:opacity .15s;
+}
+.g-masonry .card:active{opacity:.75}
+.g-masonry .card.landscape{grid-column:span 2}
+.g-masonry .card.portrait{grid-column:span 1}
+.g-masonry .card-img{width:100%;display:block;object-fit:cover;height:auto}
+.g-masonry .card-ph{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--text3)}
+.g-masonry .card-ph i{font-size:28px}
+.g-masonry .card-meta{padding:7px 10px 9px;border-top:1px solid var(--border)}
+.g-masonry .card-name{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.g-masonry .card-sub{display:flex;align-items:center;gap:5px;margin-top:2px}
+.g-masonry .card-det{font-size:9.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+
+/* hover layer (desktop) */
+.card-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0);transition:background .15s;pointer-events:none}
+.card:hover .card-hover{background:rgba(0,0,0,.35)}
+.card-hover .picon{font-size:28px;color:#fff;opacity:0;transform:scale(.8);transition:opacity .15s,transform .15s}
+.card:hover .card-hover .picon{opacity:1;transform:scale(1)}
+
+/* type badge */
+.card-badge{position:absolute;top:6px;left:6px;font-size:8px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:20px;backdrop-filter:blur(6px)}
+.badge-image{background:rgba(111,163,255,.2);color:#9ab8ff;border:1px solid rgba(111,163,255,.25)}
+.badge-video{background:rgba(255,95,95,.2);color:#ff9090;border:1px solid rgba(255,95,95,.25)}
+.badge-audio{background:rgba(184,255,87,.12);color:var(--accent);border:1px solid rgba(184,255,87,.2)}
+
+/* type dot */
+.tdot{width:4px;height:4px;border-radius:50%;flex-shrink:0}
+.td-image{background:var(--blue)}.td-video{background:var(--red)}.td-audio{background:var(--accent)}
+
+/* empty / scan / loader */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:55%;gap:10px;color:var(--text3)}
+.empty i{font-size:36px;opacity:.35}
+.empty p{font-size:12px}
+.scan-progress{display:none;flex-direction:column;align-items:center;justify-content:center;height:55%;gap:14px;color:var(--text2)}
+.scan-icon{font-size:34px;color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scan-progress p{font-size:12px}
+.scan-progress small{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.loader-row{display:flex;justify-content:center;padding:18px 0}
+.spinner{width:20px;height:20px;border:2px solid var(--bg4);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite}
+.sentinel{height:1px}
+
+/* end-of-list indicator */
+.end-of-list{
+  display:none;flex-direction:column;align-items:center;gap:6px;
+  padding:28px 0 16px;
+}
+.end-of-list.visible{display:flex;animation:sectionFade .4s cubic-bezier(.25,.46,.45,.94) both}
+.end-line-wrap{display:flex;align-items:center;gap:10px;width:100%;max-width:220px}
+.end-line{flex:1;height:1px;background:var(--border2)}
+.end-dot{width:5px;height:5px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.end-text{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase}
+
+/* card entry animation */
+@keyframes cardIn{
+  from{opacity:0;transform:translateY(10px) scale(0.97)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
+}
+.card.anim-in{
+  animation:cardIn .3s cubic-bezier(.25,.46,.45,.94) both;
+}
+
+/* ═══ SKELETON CARDS ═══ */
+@keyframes shimmer{
+  0%  {background-position:200% 0}
+  100%{background-position:-200% 0}
+}
+.skel-base{
+  background:linear-gradient(90deg,var(--bg2) 25%,var(--bg3) 50%,var(--bg2) 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.6s ease-in-out infinite;
+  border-radius:var(--r-lg);
+  border:1px solid var(--border);
+}
+/* skeleton container mirrors the real grid/masonry containers */
+#skeleton-grid{
+  display:none;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+}
+#skeleton-masonry{
+  display:none;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  align-items:start;
+}
+@media(max-width:900px){
+  #skeleton-grid{grid-template-columns:repeat(3,1fr)}
+  #skeleton-masonry{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:600px){
+  #skeleton-grid{grid-template-columns:repeat(3,1fr)}
+  #skeleton-masonry{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:400px){
+  #skeleton-grid{grid-template-columns:repeat(2,1fr)}
+}
+/* grid skeleton card: square aspect ratio */
+.skel-grid-card{
+  aspect-ratio:1;
+}
+/* masonry skeleton card: mimic a portrait card with meta strip */
+.skel-masonry-card{
+  border-radius:var(--r-lg);
+  border:1px solid var(--border);
+  overflow:hidden;
+}
+.skel-masonry-card.landscape{grid-column:span 2}
+.skel-masonry-card.portrait {grid-column:span 1}
+.skel-masonry-img{
+  width:100%;aspect-ratio:16/9;
+}
+.skel-masonry-meta{
+  padding:7px 10px 9px;
+  border-top:1px solid var(--border);
+  display:flex;flex-direction:column;gap:5px;
+}
+.skel-masonry-line{
+  height:9px;border-radius:4px;
+}
+/* staggered delays so cards don't all pulse in sync */
+.skel-grid-card:nth-child(1),.skel-masonry-card:nth-child(1){animation-delay:0s}
+.skel-grid-card:nth-child(2),.skel-masonry-card:nth-child(2){animation-delay:.12s}
+.skel-grid-card:nth-child(3),.skel-masonry-card:nth-child(3){animation-delay:.24s}
+.skel-grid-card:nth-child(4),.skel-masonry-card:nth-child(4){animation-delay:.06s}
+.skel-grid-card:nth-child(5),.skel-masonry-card:nth-child(5){animation-delay:.18s}
+.skel-grid-card:nth-child(6),.skel-masonry-card:nth-child(6){animation-delay:.30s}
+.skel-grid-card:nth-child(7),.skel-masonry-card:nth-child(7){animation-delay:.09s}
+.skel-grid-card:nth-child(8),.skel-masonry-card:nth-child(8){animation-delay:.21s}
+.skel-masonry-line:nth-child(2){animation-delay:.15s}
+
+/* viewer open animation */
+@keyframes viewerIn{
+  from{opacity:0;transform:scale(1.03)}
+  to  {opacity:1;transform:scale(1)}
+}
+@keyframes viewerSlideUp{
+  from{opacity:0;transform:translateY(32px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+
+/* section transition */
+@keyframes sectionFade{
+  from{opacity:0;transform:translateY(6px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+.g-grid.section-enter,.g-masonry.section-enter{
+  animation:sectionFade .22s cubic-bezier(.25,.46,.45,.94) both;
+}
+
+/* ═══════════════════════════
+   IMAGE VIEWER
+═══════════════════════════ */
+#vimg{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:#000;flex-direction:column;
+  touch-action:pan-y;
+  transition:opacity .18s cubic-bezier(.25,.46,.45,.94);
+}
+#vimg.open{display:flex;animation:viewerIn .22s cubic-bezier(.25,.46,.45,.94) both}
+.vimg-bar{
+  position:absolute;top:0;left:0;right:0;
+  height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.7),transparent);
+  z-index:10;
+}
+.v-close{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);cursor:pointer;color:rgba(255,255,255,.7);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);flex-shrink:0;transition:color .15s;-webkit-tap-highlight-color:transparent}
+.v-close:hover,.v-close:active{color:#fff}
+.v-close i{font-size:15px}
+.vimg-name{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;color:#fff;opacity:.85}
+.vimg-counter{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:rgba(255,255,255,.5);flex-shrink:0}
+.vimg-stage{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
+  touch-action:none;
+}
+.vimg-stage img{
+  max-width:100%;max-height:100%;
+  object-fit:contain;
+  display:block;
+  pointer-events:none;
+  will-change:transform;
+  user-select:none;
+  -webkit-user-drag:none;
+  transform-origin:center center;
+}
+/* nav arrows (desktop only) */
+.vimg-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12);border-radius:50%;
+  cursor:pointer;color:rgba(255,255,255,.7);transition:color .15s,background .15s;z-index:5;
+}
+.vimg-nav:hover{color:#fff;background:rgba(0,0,0,.7)}
+.vimg-nav i{font-size:18px}
+.vimg-prev{left:12px}.vimg-next{right:12px}
+@media(max-width:600px){.vimg-nav{display:none}}
+
+/* swipe transition hint strip */
+.vimg-dots{
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  display:flex;gap:5px;z-index:10;
+}
+.vimg-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3)}
+.vimg-dot.active{background:#fff}
+
+/* ═══════════════════════════
+   VIDEO PLAYER
+═══════════════════════════ */
+#vvid{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:#000;flex-direction:column;
+}
+#vvid.open{display:flex;animation:viewerIn .22s cubic-bezier(.25,.46,.45,.94) both}
+
+/* Top bar — fades with controls */
+.vvid-bar{
+  position:absolute;top:0;left:0;right:0;z-index:10;
+  height:56px;display:flex;align-items:center;gap:4px;
+  padding:0 8px 0 2px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.78) 0%,transparent 100%);
+  opacity:0;transition:opacity .22s;pointer-events:none;
+}
+.vvid-bar.visible{opacity:1;pointer-events:all}
+.vvid-name{
+  font-size:13px;font-weight:500;color:rgba(255,255,255,.88);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;padding:0 8px;
+}
+
+.vvid-stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative;-webkit-tap-highlight-color:transparent;outline:none;overflow:hidden}
+#vid-el{width:100%;height:100%;object-fit:contain;outline:none;-webkit-tap-highlight-color:transparent;display:block}
+
+/* Double-tap ripple */
+.vid-seek-ripple{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:72px;height:72px;border-radius:50%;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;
+  opacity:0;pointer-events:none;
+}
+.vid-seek-ripple.show{animation:ripplePop .4s cubic-bezier(.25,.46,.45,.94) forwards}
+@keyframes ripplePop{
+  0%{transform:translateY(-50%) scale(.82);opacity:1}
+  55%{transform:translateY(-50%) scale(1.1);opacity:1}
+  100%{transform:translateY(-50%) scale(1.02);opacity:0}
+}
+.vid-seek-ripple i{font-size:20px;color:#fff}
+.vid-seek-ripple span{font-size:9.5px;color:rgba(255,255,255,.75);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em}
+#vid-ripple-l{left:8%}
+#vid-ripple-r{right:8%}
+
+/* Center flash */
+.vid-center-flash{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.82);
+  width:60px;height:60px;border-radius:50%;
+  background:rgba(0,0,0,.48);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.13);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .16s,transform .16s;
+}
+.vid-center-flash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.vid-center-flash i{font-size:26px;color:#fff}
+
+/* Controls overlay */
+.vid-controls{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:36px 0 0;
+  background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.28) 55%,transparent 100%);
+  display:flex;flex-direction:column;
+  opacity:0;transition:opacity .22s;pointer-events:none;z-index:5;
+}
+.vid-controls.visible{opacity:1;pointer-events:all}
+
+/* Seekbar */
+.vid-seek-area{padding:0 18px 2px;position:relative}
+.vid-prog-hitbox{
+  width:100%;height:36px;display:flex;align-items:center;
+  cursor:pointer;touch-action:none;flex-shrink:0;position:relative;
+}
+.vid-prog-track{
+  width:100%;height:3px;background:rgba(255,255,255,.16);border-radius:99px;
+  position:relative;flex-shrink:0;transition:height .14s cubic-bezier(.25,.46,.45,.94);overflow:visible;
+}
+.vid-prog-hitbox:hover .vid-prog-track,
+.vid-prog-hitbox.dragging .vid-prog-track{height:5px}
+.vid-prog-buf{position:absolute;left:0;top:0;height:100%;background:rgba(255,255,255,.22);border-radius:99px;width:0%;pointer-events:none}
+.vid-prog-fill{position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:99px;width:0%;pointer-events:none}
+.vid-prog-thumb{
+  position:absolute;top:50%;transform:translate(-50%,-50%);
+  width:14px;height:14px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 8px rgba(0,0,0,.6);
+  opacity:0;transition:opacity .14s,transform .14s;pointer-events:none;left:0%;
+}
+.vid-prog-hitbox:hover .vid-prog-thumb,
+.vid-prog-hitbox.dragging .vid-prog-thumb{opacity:1}
+.vid-prog-hitbox.dragging .vid-prog-thumb{transform:translate(-50%,-50%) scale(1.3)}
+
+/* Tooltip */
+.vid-seek-tooltip{
+  position:absolute;bottom:calc(100% + 8px);
+  background:rgba(12,12,12,.9);backdrop-filter:blur(6px);
+  color:#fff;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  padding:4px 8px;border-radius:6px;pointer-events:none;border:1px solid rgba(255,255,255,.1);
+  opacity:0;transition:opacity .1s;transform:translateX(-50%);white-space:nowrap;
+}
+.vid-prog-hitbox.dragging .vid-seek-tooltip,
+.vid-prog-hitbox:hover .vid-seek-tooltip{opacity:1}
+
+/* Controls row — tight, no overflow */
+.vid-ctrl-row{
+  display:flex;align-items:center;
+  padding:2px 8px calc(max(14px, env(safe-area-inset-bottom)) + 2px);
+  gap:0;
+}
+.vid-grp-center{display:flex;align-items:center;gap:0}
+.vid-grp-right{display:flex;align-items:center;gap:0;margin-left:auto;flex-shrink:0}
+.vid-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:40px;height:44px;border-radius:8px;cursor:pointer;
+  color:rgba(255,255,255,.88);border:none;background:transparent;
+  transition:color .12s,transform .12s cubic-bezier(.34,1.56,.64,1);flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.vid-btn:active{transform:scale(.82)}
+.vid-btn i{font-size:19px}
+.vid-btn.big{width:50px;height:50px}
+.vid-btn.big i{font-size:30px}
+/* skip buttons slightly smaller */
+.vid-btn.skip i{font-size:17px}
+.vid-time{
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;
+  color:rgba(255,255,255,.42);white-space:nowrap;padding:0 4px;letter-spacing:.02em;
+  flex-shrink:1;min-width:0;
+}
+.vid-speed-btn{
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.05em;
+  color:rgba(255,255,255,.6);background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:5px;padding:0 7px;cursor:pointer;height:24px;flex-shrink:0;
+  transition:background .12s,color .12s;
+  -webkit-tap-highlight-color:transparent;
+}
+.vid-speed-btn:active{background:rgba(255,255,255,.16);color:#fff}
+
+/* Vertical volume popup */
+.vid-vol-wrap{position:relative;display:flex;align-items:center;flex-shrink:0}
+.vid-vol-popup{
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:rgba(18,18,24,.92);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.12);border-radius:10px;
+  padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;
+  transform:translateX(-50%) translateY(6px);
+  z-index:20;
+}
+.vid-vol-popup.open{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
+.vid-vol-slider{
+  writing-mode:vertical-lr;direction:rtl;
+  width:4px;height:80px;
+  appearance:none;outline:none;cursor:pointer;
+  background:rgba(255,255,255,.18);border-radius:99px;
+}
+.vid-vol-slider::-webkit-slider-thumb{
+  appearance:none;width:14px;height:14px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);
+}
+.vid-vol-pct{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  color:rgba(255,255,255,.5);letter-spacing:.04em;
+}
+
+
+
+
+/* ═══════════════════════════
+   AUDIO VIEWER
+═══════════════════════════ */
+#vaud{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:var(--bg);flex-direction:column;
+  touch-action:pan-y;
+}
+#vaud.open{display:flex;animation:viewerSlideUp .25s cubic-bezier(.25,.46,.45,.94) both}
+.vaud-bar{
+  height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.vaud-close{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);cursor:pointer;color:var(--text2);border:1px solid var(--border2);background:var(--bg3);flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.vaud-close i{font-size:15px}
+.vaud-title-bar{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vaud-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 28px;gap:22px;overflow:hidden}
+.aud-art{
+  width:min(200px,55vw);height:min(200px,55vw);
+  border-radius:var(--r-xl);background:var(--bg3);
+  border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;color:var(--text3);
+  flex-shrink:0;
+  touch-action:pan-y;
+  cursor:grab;
+  will-change:transform;
+  user-select:none;
+}
+.aud-art i{font-size:56px}
+.aud-info{text-align:center;width:100%}
+.aud-track{font-size:17px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aud-sub{font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace;margin-top:3px}
+.aud-player{width:100%;max-width:420px}
+/* seek bar — outer hitbox is tall for easy touch, inner track is thin visual */
+.aud-seek-wrap{
+  width:100%;height:36px;background:transparent;border-radius:4px;
+  cursor:pointer;position:relative;touch-action:none;
+  display:flex;align-items:center;
+  margin-bottom:0;
+}
+.aud-seek-track{
+  width:100%;height:4px;background:var(--bg4);border-radius:4px;position:relative;
+  transition:height .12s;pointer-events:none;
+}
+.aud-seek-wrap:hover .aud-seek-track,
+.aud-seek-wrap.dragging .aud-seek-track{ height:6px; }
+.aud-seek-fill{height:100%;background:var(--accent);border-radius:4px;width:0%;pointer-events:none}
+.aud-seek-thumb{
+  position:absolute;right:-6px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.4);
+  opacity:0;pointer-events:none;transition:opacity .15s;
+}
+.aud-seek-wrap:hover .aud-seek-thumb,
+.aud-seek-wrap.dragging .aud-seek-thumb{opacity:1}
+.aud-time-row{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);margin-bottom:18px;margin-top:2px}
+.aud-ctrls{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
+.abtn{
+  display:flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:50%;cursor:pointer;
+  color:var(--text2);border:1px solid transparent;background:transparent;
+  transition:color .15s,background .15s;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;font-size:0;
+}
+.abtn:hover,.abtn:active{color:var(--text);background:var(--bg3)}
+.abtn i{font-size:17px}
+.abtn.pp{width:52px;height:52px;background:var(--accent);color:var(--bg);border:none;border-radius:50%}
+.abtn.pp:hover,.abtn.pp:active{opacity:.85}
+.abtn.pp i{font-size:22px}
+/* speed control */
+.aud-speed-row{display:flex;align-items:center;justify-content:center;gap:6px}
+.speed-btn{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  padding:4px 9px;border-radius:20px;cursor:pointer;
+  color:var(--text3);border:1px solid var(--border);background:transparent;
+  transition:color .15s,border-color .15s,background .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.speed-btn:hover,.speed-btn:active{color:var(--text);border-color:var(--border2)}
+.speed-btn.active{color:var(--accent);border-color:rgba(184,255,87,.3);background:var(--accent-dim)}
+audio{display:none}
+
+/* ═══════════════════════════
+   MINI PLAYER
+═══════════════════════════ */
+.mini-player{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;
+  height:var(--mini);
+  background:var(--bg1);border-top:1px solid var(--border2);
+  padding:10px 14px;padding-bottom:calc(10px + var(--sab));
+  flex-direction:column;gap:6px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 -8px 30px rgba(0,0,0,.5);
+}
+.mini-player.visible{display:flex;animation:viewerSlideUp .25s cubic-bezier(.25,.46,.45,.94) both}
+.mini-top{display:flex;align-items:center;gap:10px}
+.mini-art{width:38px;height:38px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text3);flex-shrink:0}
+.mini-art i{font-size:16px}
+.mini-info{flex:1;min-width:0}
+.mini-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-sub{font-size:10px;color:var(--text2);margin-top:1px}
+.mini-pp{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--bg);flex-shrink:0;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.mini-pp i{font-size:16px}
+.mini-close{
+  width:28px;height:28px;border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text3);cursor:pointer;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.mini-close i{font-size:14px}
+.mini-prog{width:100%;height:2px;background:var(--bg4);border-radius:2px}
+.mini-prog-fill{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s linear}
+/* ═══════════════════════════
+   AUTH MODAL
+═══════════════════════════ */
+#auth-modal{
+  display:none;position:fixed;inset:0;z-index:900;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;
+}
+#auth-modal.open{display:flex;animation:viewerIn .22s cubic-bezier(.25,.46,.45,.94) both}
+.auth-card{
+  width:min(340px, 90vw);
+  background:var(--bg1);border:1px solid var(--border2);border-radius:var(--r-xl);
+  padding:28px 24px 24px;box-shadow:0 32px 80px rgba(0,0,0,.9);
+}
+.auth-logo{
+  font-family:'IBM Plex Mono',monospace;font-size:18px;letter-spacing:.22em;
+  color:var(--accent);text-align:center;margin-bottom:4px;
+}
+.auth-sub{
+  font-size:11px;color:var(--text3);text-align:center;margin-bottom:24px;
+  font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;
+}
+.auth-field{margin-bottom:14px}
+.auth-field label{display:block;font-size:10.5px;color:var(--text3);margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
+.auth-field input{
+  width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);
+  padding:10px 12px;color:var(--text);font-size:13px;font-family:'IBM Plex Sans',sans-serif;
+  outline:none;transition:border-color .15s,box-shadow .15s;
+}
+.auth-field input:focus{border-color:rgba(184,255,87,.4);box-shadow:0 0 0 3px rgba(184,255,87,.08)}
+.auth-err{
+  font-size:11px;color:var(--red);margin-bottom:12px;min-height:16px;
+  font-family:'IBM Plex Mono',monospace;display:none;
+}
+.auth-err.show{display:block}
+.auth-submit{
+  width:100%;padding:11px;background:var(--accent);border:none;border-radius:var(--r);
+  color:var(--bg);font-size:13px;font-weight:500;font-family:'IBM Plex Sans',sans-serif;
+  cursor:pointer;transition:opacity .15s;letter-spacing:.02em;
+}
+.auth-submit:hover{opacity:.88}
+.auth-submit:disabled{opacity:.45;pointer-events:none}
+
+/* ═══════════════════════════
+   EXIT CONFIRM MODAL
+═══════════════════════════ */
+#exit-modal{
+  display:none;position:fixed;inset:0;z-index:950;
+  background:rgba(0,0,0,.78);backdrop-filter:blur(14px);
+  align-items:center;justify-content:center;
+}
+#exit-modal.open{display:flex;animation:viewerIn .22s cubic-bezier(.25,.46,.45,.94) both}
+.exit-card{
+  width:min(300px,86vw);
+  background:var(--bg1);border:1px solid var(--border2);border-radius:22px;
+  box-shadow:0 40px 80px rgba(0,0,0,.9);text-align:center;
+  overflow:hidden;
+}
+.exit-card-body{padding:28px 24px 20px}
+.exit-icon{
+  width:50px;height:50px;border-radius:50%;
+  background:rgba(255,95,95,.08);border:1px solid rgba(255,95,95,.15);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 14px;color:var(--red);
+}
+.exit-icon i{font-size:22px}
+.exit-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:-.02em}
+.exit-body{font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:0}
+.exit-actions{
+  display:flex;border-top:1px solid var(--border1);
+}
+.exit-btn{
+  flex:1;padding:14px 8px;font-size:13px;
+  font-family:'IBM Plex Sans',sans-serif;font-weight:500;
+  cursor:pointer;transition:background .14s,color .14s;
+  border:none;background:transparent;letter-spacing:.01em;
+}
+.exit-btn+.exit-btn{border-left:1px solid var(--border1)}
+.exit-btn.cancel{color:var(--text2)}
+.exit-btn.cancel:hover{color:var(--text);background:var(--bg3)}
+.exit-btn.confirm{color:var(--red)}
+.exit-btn.confirm:hover{background:rgba(255,95,95,.08)}
+/* ═══ DIRECTORY PICKER MODAL ═══ */
+#dir-modal{display:none;position:fixed;inset:0;z-index:910;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);align-items:center;justify-content:center}
+#dir-modal.open{display:flex;animation:viewerIn .22s cubic-bezier(.25,.46,.45,.94) both}
+.dir-card{width:min(380px,92vw);max-height:80vh;background:var(--bg1);border:1px solid var(--border2);border-radius:var(--r-xl);display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.9);overflow:hidden}
+.dir-header{padding:20px 20px 14px;border-bottom:1px solid var(--border1);flex-shrink:0}
+.dir-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:3px}
+.dir-sub{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.dir-list{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+.dir-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;transition:background .12s,border-color .12s;margin-bottom:3px}
+.dir-item:hover{background:var(--bg3);border-color:var(--border2)}
+.dir-item.selected{background:var(--accent-dim);border-color:rgba(184,255,87,.3)}
+.dir-item-icon{width:34px;height:34px;border-radius:8px;flex-shrink:0;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:16px}
+.dir-item.selected .dir-item-icon{background:rgba(184,255,87,.12);color:var(--accent)}
+.dir-item-info{flex:1;min-width:0}
+.dir-item-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dir-item-count{font-size:11px;color:var(--text3);margin-top:1px;font-family:'IBM Plex Mono',monospace}
+.dir-item-check{color:var(--accent);font-size:16px;opacity:0;transition:opacity .12s;flex-shrink:0}
+.dir-item.selected .dir-item-check{opacity:1}
+.dir-footer{padding:12px;border-top:1px solid var(--border1);display:flex;gap:8px;flex-shrink:0}
+.dir-btn{flex:1;padding:10px;border-radius:var(--r);font-size:12.5px;font-family:'IBM Plex Sans',sans-serif;cursor:pointer;transition:background .12s;border:1px solid var(--border2)}
+.dir-btn.cancel{background:var(--bg3);color:var(--text2)}
+.dir-btn.cancel:hover{background:var(--bg4);color:var(--text)}
+.dir-btn.confirm{background:var(--accent-dim);color:var(--accent);border-color:rgba(184,255,87,.3)}
+.dir-btn.confirm:hover{background:rgba(184,255,87,.18)}
+.dir-btn.confirm:disabled{opacity:.35;pointer-events:none}
+.dir-loading{padding:32px 16px;text-align:center;color:var(--text3);font-size:12px;font-family:'IBM Plex Mono',monospace}
+
+/* ═══ Hover: desktop-only — prevent sticky hover on touch ═══ */
+@media(hover:hover){
+  .sb-toggle:hover{color:var(--text);background:var(--bg3)}
+  .nav-item:hover{background:var(--bg2);color:var(--text)}
+  .tb-btn:hover{color:var(--text);border-color:rgba(255,255,255,.16)}
+  .sort-opt:hover{background:var(--bg3);color:var(--text)}
+  .btn-server:hover{color:var(--accent);border-color:rgba(184,255,87,.25)}
+  .dir-item:hover{background:var(--bg3);border-color:var(--border2)}
+  .dir-btn.cancel:hover{background:var(--bg4);color:var(--text)}
+  .dir-btn.confirm:hover{background:rgba(184,255,87,.18)}
+  .exit-btn.cancel:hover{color:var(--text);background:var(--bg3)}
+  .exit-btn.confirm:hover{background:rgba(255,95,95,.08)}
+  .card:hover .card-hover{background:rgba(0,0,0,.35)}
+  .card:hover .card-hover .picon{opacity:1;transform:scale(1)}
+  .v-close:hover{color:#fff}
+  .vimg-nav:hover{color:#fff;background:rgba(0,0,0,.7)}
+}
+/* Remove stale unconditional hover states that cause sticky-hover on touch */
+.sb-toggle,.nav-item,.tb-btn,.sort-opt,.btn-server,.dir-item,.dir-btn,.exit-btn,.card,.v-close,.vimg-nav{-webkit-tap-highlight-color:transparent}
+
+/* ═══ Sidebar font size bump ═══ */
+.nav-label{font-size:11.5px;letter-spacing:.12em}
+.nav-item{font-size:15px}
+.nav-item i{font-size:18px}
+
+/* ═══ SEARCH BAR ═══ */
+/* suppress browser-native ✕ on type=search */
+#search-input::-webkit-search-cancel-button,
+#search-input::-webkit-search-decoration{-webkit-appearance:none;display:none}
+#search-input[type=search]::-ms-clear{display:none}
+.search-wrap{
+  display:flex;align-items:center;
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;transition:border-color .15s;
+  flex:1;max-width:320px;min-width:0;
+}
+.search-wrap:focus-within{border-color:var(--border2)}
+.search-ico{
+  padding:0 8px 0 10px;color:var(--text3);font-size:13px;
+  display:flex;align-items:center;flex-shrink:0;pointer-events:none;
+}
+#search-input{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--text);font-size:12px;font-family:'IBM Plex Sans',sans-serif;
+  padding:6px 0;min-width:0;
+}
+#search-input::placeholder{color:var(--text3)}
+.search-clear{
+  width:24px;height:24px;display:none;align-items:center;justify-content:center;
+  color:var(--text3);cursor:pointer;flex-shrink:0;border-radius:var(--r);
+  font-size:12px;margin-right:3px;transition:color .12s;
+  -webkit-tap-highlight-color:transparent;
+}
+.search-clear.visible{display:flex}
+@media(hover:hover){.search-clear:hover{color:var(--text)}}
+
+/* ═══ SIDEBAR SWIPE OVERLAY (mobile) ═══ */
+#sb-overlay{
+  display:none;position:fixed;inset:0;z-index:199;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(2px);
+  opacity:0;transition:opacity .22s;
+}
+#sb-overlay.active{opacity:1}
+@media(max-width:768px){
+  .sidebar{
+    position:fixed!important;top:0;left:0;bottom:0;z-index:200;
+    transform:translateX(-100%);
+    width:var(--sidebar)!important;
+    opacity:1!important;pointer-events:none;
+    transition:transform .22s cubic-bezier(.4,0,.2,1);
+  }
+  .sidebar.sb-open{transform:translateX(0);pointer-events:auto}
+  .sidebar.collapsed{transform:translateX(-100%);opacity:1!important}
+}
+</style>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="sb-toggle" onclick="toggleSidebar()"><i class="ti ti-layout-sidebar"></i></div>
+  <span class="wordmark">VAULT</span>
+  <div class="topbar-space"></div>
+  <div class="fetch-dot" id="fetch-dot" title="Fetch status"></div>
+  <!-- Sort -->
+  <div style="position:relative">
+    <button class="tb-btn" onclick="toggleSortMenu(event)">
+      <i class="ti ti-arrows-sort"></i>
+      <span id="sort-lbl">Newest</span>
+    </button>
+    <div class="sort-drop" id="sort-menu">
+      <div class="sort-opt sel" data-v="date_desc" onclick="pickSort(this)"><i class="ti ti-calendar-down"></i>Newest first</div>
+      <div class="sort-opt" data-v="date_asc"  onclick="pickSort(this)"><i class="ti ti-calendar-up"></i>Oldest first</div>
+      <div class="sort-opt" data-v="name_asc"  onclick="pickSort(this)"><i class="ti ti-sort-a-z"></i>Name A→Z</div>
+      <div class="sort-opt" data-v="size_desc" onclick="pickSort(this)"><i class="ti ti-file-arrow-down"></i>Largest first</div>
+    </div>
+  </div>
+  <!-- Layout: icon always visible; glows when masonry (default) is active -->
+  <button class="tb-btn" id="layout-btn" onclick="toggleLayout()" title="Toggle layout">
+    <i class="ti ti-layout-grid" id="layout-ico"></i>
+  </button>
+  <!-- From device -->
+  <button class="tb-btn" id="btn-device" onclick="pickDirectory()">
+    <i class="ti ti-folder-open" id="dev-ico"></i>
+    <span class="hide-xs">From device</span>
+  </button>
+</div>
+
+<!-- SIDEBAR SWIPE OVERLAY -->
+<div id="sb-overlay" onclick="closeSidebarMobile()"></div>
+
+<!-- BODY -->
+<div class="layout-body">
+  <!-- SIDEBAR -->
+  <div class="sidebar collapsed" id="sidebar">
+    <div class="sb-inner">
+      <div class="nav-sect">
+        <div class="nav-label">Library</div>
+        <div class="nav-item active" data-t="all"   onclick="setSection(this)"><i class="ti ti-layout-grid"></i>All media<span class="nav-badge" id="b-all">0</span></div>
+        <div class="nav-item"        data-t="image" onclick="setSection(this)"><i class="ti ti-photo"></i>Images<span class="nav-badge" id="b-image">0</span></div>
+        <div class="nav-item"        data-t="video" onclick="setSection(this)"><i class="ti ti-video"></i>Videos<span class="nav-badge" id="b-video">0</span></div>
+        <div class="nav-item"        data-t="audio" onclick="setSection(this)"><i class="ti ti-music"></i>Recordings<span class="nav-badge" id="b-audio">0</span></div>
+      </div>
+      <div class="sb-div"></div>
+      <div class="sb-space"></div>
+      <div class="sb-footer">
+        <div class="srv-row"><div class="sdot" id="sdot"></div><span id="srv-txt">Not connected</span></div>
+        <button class="btn-server" id="btn-srv" onclick="fetchServer()">
+          <i class="ti ti-server-2" id="srv-ico"></i>Fetch from server
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="main-bar">
+      <span class="section-title"><b id="sec-title">All media</b></span>
+      <span class="count-tag" id="cnt">0 items</span>
+      <span class="dir-tag" id="dir-tag"><i class="ti ti-folder-filled"></i><span id="dir-name"></span></span>
+      <div class="topbar-space"></div>
+      <div class="search-wrap">
+        <span class="search-ico"><i class="ti ti-search"></i></span>
+        <input type="text" id="search-input" placeholder="Search…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onSearch(this.value)"/>
+        <div class="search-clear" id="search-clear" onclick="clearSearch()"><i class="ti ti-x"></i></div>
+      </div>
+    </div>
+    <div class="g-scroll" id="g-scroll">
+      <div id="skeleton-grid"></div>
+      <div id="skeleton-masonry"></div>
+      <div class="g-grid"    id="g-grid"    style="display:none"></div>
+      <div class="g-masonry" id="g-masonry" style="display:none"></div>
+      <div class="empty" id="empty"><i class="ti ti-photo-off"></i><p>Pick a folder or fetch from server</p></div>
+      <div class="scan-progress" id="scan-progress">
+        <i class="ti ti-loader-2 scan-icon"></i>
+        <p>Scanning directory…</p>
+        <small id="scan-count">0 files found</small>
+      </div>
+      <div class="loader-row" id="loader" style="display:none"><div class="spinner"></div></div>
+      <div class="end-of-list" id="end-of-list">
+        <div class="end-line-wrap">
+          <div class="end-line"></div>
+          <div class="end-dot"></div>
+          <div class="end-line"></div>
+        </div>
+        <span class="end-text">all items loaded</span>
+      </div>
+      <div class="sentinel" id="sentinel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ IMAGE VIEWER ═══ -->
+<div id="vimg">
+  <div class="vimg-bar">
+    <div class="v-close" onclick="closeV('img')"><i class="ti ti-x"></i></div>
+    <span class="vimg-name" id="img-name"></span>
+    <span class="vimg-counter" id="img-counter"></span>
+  </div>
+  <div class="vimg-stage" id="vimg-stage">
+    <div class="vimg-nav vimg-prev" onclick="navV('img',-1)"><i class="ti ti-chevron-left"></i></div>
+    <img id="img-el" src="" alt=""/>
+    <div class="vimg-nav vimg-next" onclick="navV('img',1)"><i class="ti ti-chevron-right"></i></div>
+  </div>
+  <div class="vimg-dots" id="vimg-dots"></div>
+</div>
+
+<!-- ═══ VIDEO VIEWER ═══ -->
+<div id="vvid">
+  <div class="vvid-bar" id="vvid-bar">
+    <div class="v-close" onclick="closeV('vid')"><i class="ti ti-x"></i></div>
+    <span class="vvid-name" id="vid-name"></span>
+  </div>
+  <div class="vvid-stage" id="vvid-stage">
+    <video id="vid-el" playsinline preload="metadata"></video>
+    <div class="vid-seek-ripple" id="vid-ripple-l"><i class="ti ti-rewind"></i><span>10s</span></div>
+    <div class="vid-seek-ripple" id="vid-ripple-r"><i class="ti ti-fast-forward"></i><span>10s</span></div>
+    <div class="vid-center-flash" id="vid-center-flash"><i class="ti ti-player-play" id="vid-flash-ico"></i></div>
+    <div class="vid-controls" id="vid-controls" onclick="event.stopPropagation()">
+      <div class="vid-seek-area">
+        <div class="vid-prog-hitbox" id="vid-prog">
+          <div class="vid-prog-track">
+            <div class="vid-prog-buf"  id="vid-buf"></div>
+            <div class="vid-prog-fill" id="vid-fill"></div>
+            <div class="vid-prog-thumb" id="vid-thumb"></div>
+          </div>
+          <div class="vid-seek-tooltip" id="vid-tooltip">0:00</div>
+        </div>
+      </div>
+      <div class="vid-ctrl-row">
+        <div class="vid-grp-center">
+          <div class="vid-btn skip" onclick="navV('vid',-1)"><i class="ti ti-player-skip-back"></i></div>
+          <div class="vid-btn skip" onclick="seekVidRel(-10)"><i class="ti ti-rewind-10"></i></div>
+          <div class="vid-btn big" id="vid-pp-btn" onclick="toggleVidPlay()"><i class="ti ti-player-play" id="vid-pp-ico"></i></div>
+          <div class="vid-btn skip" onclick="seekVidRel(10)"><i class="ti ti-forward-10"></i></div>
+          <div class="vid-btn skip" onclick="navV('vid',1)"><i class="ti ti-player-skip-forward"></i></div>
+        </div>
+        <span class="vid-time" id="vid-time">0:00 / 0:00</span>
+        <div class="vid-grp-right">
+          <button class="vid-speed-btn" id="vid-speed-btn" onclick="cycleSpeed()">1×</button>
+          <div class="vid-vol-wrap" id="vid-vol-wrap">
+            <div class="vid-vol-popup" id="vid-vol-popup">
+              <input class="vid-vol-slider" id="vid-vol" type="range" min="0" max="1" step="0.02" value="1" oninput="setVidVol(this.value)"/>
+              <span class="vid-vol-pct" id="vid-vol-pct">100%</span>
+            </div>
+            <div class="vid-btn" id="vid-mute-btn" onclick="toggleVolPopup(event)"><i class="ti ti-volume" id="vid-vol-ico"></i></div>
+          </div>
+          <div class="vid-btn" onclick="toggleFullscreen()"><i class="ti ti-maximize" id="vid-fs-ico"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AUDIO VIEWER ═══ -->
+<div id="vaud">
+  <div class="vaud-bar">
+    <div class="vaud-close" onclick="closeV('aud')"><i class="ti ti-chevron-down"></i></div>
+    <span class="vaud-title-bar" id="aud-bar-name"></span>
+  </div>
+  <div class="vaud-body" id="vaud-body">
+    <div class="aud-art"><i class="ti ti-music"></i></div>
+    <div class="aud-info">
+      <div class="aud-track" id="aud-track">—</div>
+      <div class="aud-sub"   id="aud-sub">audio</div>
+    </div>
+    <div class="aud-player">
+      <div class="aud-seek-wrap" id="aud-seek">
+        <div class="aud-seek-track">
+          <div class="aud-seek-fill" id="aud-fill"></div>
+          <div class="aud-seek-thumb" id="aud-thumb"></div>
+        </div>
+      </div>
+      <div class="aud-time-row">
+        <span id="aud-cur">0:00</span>
+        <span id="aud-dur">0:00</span>
+      </div>
+      <div class="aud-ctrls">
+        <div class="abtn" onclick="navV('aud',-1)" title="Prev"><i class="ti ti-player-skip-back"></i></div>
+        <div class="abtn" onclick="seekAudRel(-10)" title="-10s"><i class="ti ti-rewind"></i></div>
+        <div class="abtn pp" id="pp-btn" onclick="toggleAud()"><i class="ti ti-player-play" id="pp-ico"></i></div>
+        <div class="abtn" onclick="seekAudRel(10)" title="+10s"><i class="ti ti-fast-forward"></i></div>
+        <div class="abtn" onclick="navV('aud',1)" title="Next"><i class="ti ti-player-skip-forward"></i></div>
+      </div>
+      <div class="aud-speed-row">
+        <button class="speed-btn" data-s="0.5"  onclick="setSpeed(this)">0.5×</button>
+        <button class="speed-btn" data-s="0.75" onclick="setSpeed(this)">0.75×</button>
+        <button class="speed-btn active" data-s="1" onclick="setSpeed(this)">1×</button>
+        <button class="speed-btn" data-s="1.25" onclick="setSpeed(this)">1.25×</button>
+        <button class="speed-btn" data-s="1.5"  onclick="setSpeed(this)">1.5×</button>
+        <button class="speed-btn" data-s="2"    onclick="setSpeed(this)">2×</button>
+      </div>
+    </div>
+  </div>
+  <audio id="aud-el"></audio>
+</div>
+
+<!-- ═══ MINI PLAYER ═══ -->
+<div class="mini-player" id="mini-player" onclick="openMiniToFull()">
+  <div class="mini-top">
+    <div class="mini-art"><i class="ti ti-music"></i></div>
+    <div class="mini-info">
+      <div class="mini-name" id="mini-name">—</div>
+      <div class="mini-sub"  id="mini-sub">audio</div>
+    </div>
+    <div class="mini-pp" id="mini-pp-btn" onclick="event.stopPropagation();toggleAud()">
+      <i class="ti ti-player-play" id="mini-pp-ico"></i>
+    </div>
+    <div class="mini-close" onclick="event.stopPropagation();closeMini()">
+      <i class="ti ti-x"></i>
+    </div>
+  </div>
+  <div class="mini-prog"><div class="mini-prog-fill" id="mini-fill"></div></div>
+</div>
+
+<!-- ═══ AUTH MODAL ═══ -->
+<div id="auth-modal">
+  <div class="auth-card">
+    <div class="auth-logo">VAULT</div>
+    <div class="auth-sub">Server Authentication</div>
+    <div class="auth-field">
+      <label>Username</label>
+      <input type="text" id="auth-user" autocomplete="username" placeholder="Enter username" oninput="authClearErr()" onkeydown="if(event.key==='Enter')authSubmit()"/>
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="auth-pass" autocomplete="current-password" placeholder="Enter password" oninput="authClearErr()" onkeydown="if(event.key==='Enter')authSubmit()"/>
+    </div>
+    <div class="auth-err" id="auth-err">Invalid username or password.</div>
+    <button class="auth-submit" id="auth-submit-btn" onclick="authSubmit()">Connect to Server</button>
+  </div>
+</div>
+
+<!-- ═══ EXIT CONFIRM MODAL ═══ -->
+<div id="exit-modal" onclick="exitCancel(event)">
+  <div class="exit-card" onclick="event.stopPropagation()">
+    <div class="exit-card-body">
+      <div class="exit-icon"><i class="ti ti-shield-lock"></i></div>
+      <div class="exit-title">Leave Vault?</div>
+      <div class="exit-body">Your session will end and all loaded media will be cleared from memory. Unsaved state will be lost.</div>
+    </div>
+    <div class="exit-actions">
+      <button class="exit-btn cancel" onclick="exitCancel()">Stay in Vault</button>
+      <button class="exit-btn confirm" onclick="exitConfirm()">Leave</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DIRECTORY PICKER MODAL ═══ -->
+<div id="dir-modal" onclick="dirCancel(event)">
+  <div class="dir-card" onclick="event.stopPropagation()">
+    <div class="dir-header">
+      <div class="dir-title">Choose a Directory</div>
+      <div class="dir-sub" id="dir-sub">Tap a folder to load it instantly</div>
+    </div>
+    <div class="dir-list" id="dir-list">
+      <div class="dir-loading">Loading directories…</div>
+    </div>
+    <div class="dir-footer">
+      <button class="dir-btn cancel" onclick="dirCancel()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════
+// CONFIG
+// ════════════════════════════════
+// When running inside the Android WebView, window.VaultBridge.getServerUrl()
+// is injected by MainActivity and returns the correct server URL.
+// Falls back to the hardcoded address when opened in a regular browser.
+// _resolvedServer may be updated later by probeAndGetServer() at fetch-time.
+const _DEFAULT_SERVER = (window.VaultBridge && window.VaultBridge.getServerUrl)
+    ? window.VaultBridge.getServerUrl()
+    : 'http://100.100.10.10:8000';
+// Always use the live getter so fetch-time resolution takes effect
+function getServer(){ return window._resolvedServer || _DEFAULT_SERVER; }
+const SERVER = _DEFAULT_SERVER; // kept for any direct references
+const PAGE   = 10;
+
+// ── Auth token storage ──
+let _vaultToken = localStorage.getItem('vault_token') || '';
+
+function authHeaders(){
+  return _vaultToken ? {'Authorization': 'Bearer ' + _vaultToken} : {};
+}
+
+function showAuthModal(){
+  $('auth-modal').classList.add('open');
+  setTimeout(()=>{ const u=$('auth-user'); if(u) u.focus(); },100);
+}
+function hideAuthModal(){ $('auth-modal').classList.remove('open'); }
+
+function authClearErr(){ $('auth-err').classList.remove('show'); }
+
+async function authSubmit(){
+  const user=$('auth-user').value.trim();
+  const pass=$('auth-pass').value;
+  if(!user||!pass){ $('auth-err').textContent='Please enter both fields.'; $('auth-err').classList.add('show'); return; }
+  const btn=$('auth-submit-btn');
+  btn.disabled=true; btn.textContent='Connecting…';
+  try{
+    const r=await fetch(getServer()+'/api/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:user,password:pass}),
+      signal:AbortSignal.timeout(5000)
+    });
+    if(!r.ok){ throw new Error('bad'); }
+    const d=await r.json();
+    _vaultToken=d.token;
+    localStorage.setItem('vault_token',_vaultToken);
+    hideAuthModal();
+    // Show directory picker after successful login
+    showDirModal();
+  }catch(e){
+    $('auth-err').textContent='Invalid username or password.';
+    $('auth-err').classList.add('show');
+  }finally{
+    btn.disabled=false; btn.textContent='Connect to Server';
+  }
+}
+
+// ════════════════════════════════
+// DIRECTORY PICKER
+// ════════════════════════════════
+async function showDirModal(){
+  $('dir-list').innerHTML = '<div class="dir-loading"><i class="ti ti-loader-2"></i> Loading…</div>';
+  $('dir-sub').textContent = 'Tap a folder to load it instantly';
+  $('dir-modal').classList.add('open');
+  try{
+    const r = await fetch(getServer()+'/api/directories', {headers: authHeaders()});
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    renderDirList(d.directories, d.current);
+  }catch(e){
+    $('dir-list').innerHTML = '<div class="dir-loading">Failed to load directories.</div>';
+  }
+}
+
+function renderDirList(dirs, current){
+  if(!dirs.length){
+    $('dir-list').innerHTML = '<div class="dir-loading">No directories found in ./Directories/</div>';
+    return;
+  }
+  $('dir-list').innerHTML = dirs.map(d => {
+    const isCurrent = d.path === current;
+    const count = d.count === 1 ? '1 file' : `${d.count} files`;
+    const safePath = d.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="dir-item${isCurrent?' selected':''}" onclick="selectAndLoad(this,'${safePath}')">
+      <div class="dir-item-icon"><i class="ti ti-folder${isCurrent?'-open':''}"></i></div>
+      <div class="dir-item-info">
+        <div class="dir-item-name">${d.name}</div>
+        <div class="dir-item-count">${count}</div>
+      </div>
+      <i class="ti ti-chevron-right" style="color:var(--text3);font-size:14px;flex-shrink:0"></i>
+    </div>`;
+  }).join('');
+}
+
+async function selectAndLoad(el, path){
+  document.querySelectorAll('.dir-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('.dir-item-icon i').className = 'ti ti-loader-2';
+  $('dir-sub').textContent = 'Loading…';
+  try{
+    const r = await fetch(getServer()+'/api/set-directory',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...authHeaders()},
+      body: JSON.stringify({path})
+    });
+    if(!r.ok){
+      const msg = r.status === 403 ? 'Access denied (403)' : r.status === 404 ? 'Directory not found (404)' : `Error ${r.status}`;
+      throw new Error(msg);
+    }
+    $('dir-modal').classList.remove('open');
+    doFetchServer(true); // skip health check — server just responded successfully
+  }catch(e){
+    $('dir-sub').textContent = e.message || 'Failed to load — try again';
+    el.classList.remove('selected');
+    el.querySelector('.dir-item-icon i').className = 'ti ti-folder';
+  }
+}
+
+function dirCancel(e){
+  if(e && e.target !== document.getElementById('dir-modal')) return;
+  $('dir-modal').classList.remove('open');
+}
+let _exitLeaveCallback=null;
+let _exitConfirmed=false;
+
+function showExitModal(){
+  $('exit-modal').classList.add('open');
+}
+function exitCancel(e){
+  if(e && e.target!==document.getElementById('exit-modal')) return;
+  $('exit-modal').classList.remove('open');
+  history.pushState({vault:'base'},'');
+}
+function exitConfirm(){
+  $('exit-modal').classList.remove('open');
+  S.items.forEach(i=>{ if(i._local) try{ URL.revokeObjectURL(i._local); }catch(e){} });
+  _exitConfirmed=true;
+  if(window.history.length>1){
+    window.history.go(-window.history.length);
+    setTimeout(()=>window.location.replace('about:blank'),300);
+  } else {
+    window.location.replace('about:blank');
+  }
+}
+
+const IMAGE_EXT = new Set(['.jpg','.jpeg','.png','.gif','.webp','.heic','.bmp','.avif','.tiff']);
+const VIDEO_EXT = new Set(['.mp4','.mkv','.mov','.avi','.webm','.m4v','.flv','.wmv']);
+const AUDIO_EXT = new Set(['.mp3','.flac','.wav','.aac','.ogg','.m4a','.opus','.wma']);
+
+// ════════════════════════════════
+// STATE
+// ════════════════════════════════
+let S = {
+  items: [], section: 'all', sort: 'date_desc',
+  layout: 'masonry',
+  search: '',
+  // Per-section pagination state
+  pagination: {
+    all:   {offset:0, total:0},
+    image: {offset:0, total:0},
+    video: {offset:0, total:0},
+    audio: {offset:0, total:0},
+  },
+  loading: false,
+  vi: { img: 0, vid: 0, aud: 0 },
+  observer: null,
+  audSpeed: 1,
+  miniVisible: false,
+};
+
+// ════════════════════════════════
+// UTILS
+// ════════════════════════════════
+const $ = id => document.getElementById(id);
+function ext(n){ return '.' + n.split('.').pop().toLowerCase(); }
+function mtype(n){ const e=ext(n); if(IMAGE_EXT.has(e))return'image'; if(VIDEO_EXT.has(e))return'video'; if(AUDIO_EXT.has(e))return'audio'; return'other'; }
+function fsize(b){ if(!b)return'—'; if(b<1024)return b+' B'; if(b<1048576)return(b/1024).toFixed(1)+' KB'; if(b<1073741824)return(b/1048576).toFixed(1)+' MB'; return(b/1073741824).toFixed(2)+' GB'; }
+function fdur(s){ if(!s||isNaN(s))return'0:00'; const m=Math.floor(s/60),sec=Math.floor(s%60); return m+':'+String(sec).padStart(2,'0'); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function filtered(){
+  let items = S.section==='all' ? S.items : S.items.filter(i=>i.type===S.section);
+  if(S.search){ const q=S.search.toLowerCase(); items=items.filter(i=>i.name.toLowerCase().includes(q)); }
+  return items;
+}
+
+// ════════════════════════════════
+// FETCH INDICATOR
+// ════════════════════════════════
+function setDot(state){ // 'idle' | 'loading' | 'error'
+  const d = $('fetch-dot');
+  d.className = 'fetch-dot' + (state==='loading'?' loading':state==='error'?' error':'');
+}
+
+// ════════════════════════════════
+// SIDEBAR
+// ════════════════════════════════
+function toggleSidebar(){
+  const sb=$('sidebar');
+  if(window.innerWidth<=768){
+    const opening=!sb.classList.contains('sb-open');
+    sb.classList.toggle('sb-open',opening);
+    sb.classList.toggle('collapsed',!opening);
+    _showSbOverlay(opening);
+  } else {
+    sb.classList.toggle('collapsed');
+  }
+}
+function closeSidebarMobile(){
+  const sb=$('sidebar');
+  sb.classList.remove('sb-open');
+  sb.classList.add('collapsed');
+  _showSbOverlay(false);
+}
+function _showSbOverlay(show){
+  const ov=$('sb-overlay');
+  if(!ov) return;
+  if(show){
+    ov.style.display='block';
+    requestAnimationFrame(()=>ov.classList.add('active'));
+  } else {
+    ov.classList.remove('active');
+    setTimeout(()=>{ if(!ov.classList.contains('active')) ov.style.display='none'; },220);
+  }
+}
+
+// ════════════════════════════════
+// SEARCH
+// ════════════════════════════════
+function onSearch(val){
+  S.search=val.trim();
+  $('search-clear').classList.toggle('visible',S.search.length>0);
+  render(); updateCnt();
+}
+function clearSearch(){
+  const inp=$('search-input');
+  inp.value=''; onSearch(''); inp.focus();
+}
+function setSection(el){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  S.section = el.dataset.t;
+  // Clear search on section switch
+  if(S.search){ S.search=''; const inp=$('search-input'); if(inp){inp.value='';} $('search-clear').classList.remove('visible'); }
+  // Close sidebar on mobile after tapping a section
+  if(window.innerWidth<=768) closeSidebarMobile();
+  const labels={all:'All media',image:'Images',video:'Videos',audio:'Recordings'};
+  $('sec-title').textContent = labels[S.section];
+  // Animate section change
+  const activeGrid = S.layout==='grid' ? $('g-grid') : $('g-masonry');
+  activeGrid.classList.remove('section-enter');
+  void activeGrid.offsetWidth; // force reflow
+  activeGrid.classList.add('section-enter');
+  setTimeout(()=>activeGrid.classList.remove('section-enter'), 300);
+  render(); updateCnt();
+  // If we have a server connection, re-fetch this section from scratch
+  const hasServerItems = S.items.some(i=>i._isServer);
+  if(hasServerItems){
+    // Reset pagination for this section and reload
+    S.pagination[S.section] = {offset:0, total:0};
+    // Remove server items for this section so we can re-fetch fresh
+    const sectionType = S.section === 'all' ? null : S.section;
+    S.items = S.items.filter(i=>i._isLocal || (sectionType ? i.type !== sectionType : false));
+    if(S.section === 'all') S.items = S.items.filter(i=>i._isLocal);
+    hideEndOfList();
+    showSkeleton();
+    setupScroll();
+    loadPage(0, true);
+  }
+}
+
+// ════════════════════════════════
+// SORT
+// ════════════════════════════════
+function toggleSortMenu(e){ e.stopPropagation(); $('sort-menu').classList.toggle('open'); }
+function pickSort(el){
+  document.querySelectorAll('.sort-opt').forEach(o=>o.classList.remove('sel'));
+  el.classList.add('sel'); S.sort=el.dataset.v;
+  $('sort-lbl').textContent=el.textContent.trim().split('\n')[0].trim().split(' ')[0];
+  $('sort-menu').classList.remove('open');
+  const hasServerItems = S.items.some(i=>i._isServer);
+  if(hasServerItems){
+    // Reset ALL pagination and ALL server items, then re-fetch with new sort
+    S.pagination = {all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
+    S.items = S.items.filter(i=>i._isLocal);
+    hideEndOfList();
+    render(); updateCnt(); updateBadges();
+    loadPage(0, true);
+    setupScroll();
+  } else {
+    doSort(); render();
+  }
+}
+document.addEventListener('click',()=>$('sort-menu').classList.remove('open'));
+function doSort(){
+  const a=S.items;
+  if(S.sort==='date_desc') a.sort((x,y)=>y.modified-x.modified);
+  if(S.sort==='date_asc')  a.sort((x,y)=>x.modified-y.modified);
+  if(S.sort==='name_asc')  a.sort((x,y)=>x.name.localeCompare(y.name));
+  if(S.sort==='size_desc') a.sort((x,y)=>y.size-x.size);
+}
+
+// ════════════════════════════════
+// LAYOUT
+// ════════════════════════════════
+function toggleLayout(){
+  S.layout = S.layout==='masonry'?'grid':'masonry';
+  // Grid icon always shown; glows when grid is active
+  $('layout-btn').classList.toggle('on', S.layout==='grid');
+  render();
+}
+
+// ════════════════════════════════
+// DEVICE DIRECTORY PICKER
+// ════════════════════════════════
+async function pickDirectory(){
+  // Chrome on Android doesn't support showDirectoryPicker — use webkitdirectory input instead
+  const hasNewAPI = typeof window.showDirectoryPicker === 'function';
+
+  if(hasNewAPI){
+    await _pickDirectoryNew();
+  } else {
+    _pickDirectoryFallback();
+  }
+}
+
+async function pickDirectoryWithBatches(dir){
+  const allFiles=[];
+  async function collect(dirHandle,basePath){
+    for await(const [name,handle] of dirHandle.entries()){
+      const path=basePath?basePath+'/'+name:name;
+      if(handle.kind==='file'){ const type=mtype(name); if(type!=='other') allFiles.push({handle,path,type,name}); }
+      else if(handle.kind==='directory') await collect(handle,path);
+    }
+  }
+  await collect(dir,'');
+  const images=allFiles.filter(f=>f.type==='image');
+  const media=allFiles.filter(f=>f.type!=='image');
+  const IMAGE_BATCH=20, MEDIA_BATCH=10;
+  async function processBatch(files){
+    for(const f of files){
+      const file=await f.handle.getFile();
+      const url=URL.createObjectURL(file);
+      const item={
+        id:f.path+'_'+file.lastModified, name:f.name, type:f.type, ext:ext(f.name),
+        size:file.size, modified:file.lastModified/1000,
+        width:null, height:null, duration:null,
+        _local:url, _isLocal:true,
+      };
+      S.items.push(item);
+      $('scan-count').textContent=S.items.filter(i=>i._isLocal).length+' files found';
+      if(f.type==='image'){
+        const idx=S.items.length-1;
+        const img=new Image();
+        img.onload=()=>{ S.items[idx].width=img.naturalWidth; S.items[idx].height=img.naturalHeight; };
+        img.src=url;
+      }
+    }
+    doSort(); render(); updateCnt(); updateBadges();
+    await new Promise(r=>setTimeout(r,0));
+  }
+  for(let i=0;i<images.length;i+=IMAGE_BATCH) await processBatch(images.slice(i,i+IMAGE_BATCH));
+  for(let i=0;i<media.length;i+=MEDIA_BATCH) await processBatch(media.slice(i,i+MEDIA_BATCH));
+}
+
+async function _pickDirectoryNew(){
+  const btn=$('btn-device'), ico=$('dev-ico');
+  btn.disabled=true; ico.className='ti ti-loader-2';
+  $('empty').style.display='none';
+  $('scan-progress').style.display='flex';
+  $('scan-count').textContent='0 files found';
+  try{
+    const dir=await window.showDirectoryPicker({mode:'read'});
+    $('dir-tag').style.display='flex';
+    $('dir-name').textContent=dir.name;
+    // Revoke any existing local object URLs before clearing
+    S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
+    // Clear ALL items (server + local) so local data starts fresh
+    S.items=[];
+    _imgElCache.clear();
+    S.pagination={all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
+    hideEndOfList();
+    render(); updateCnt(); updateBadges();
+    await pickDirectoryWithBatches(dir);
+    if(!S.items.length) $('empty').style.display='flex';
+  }catch(e){
+    if(e.name!=='AbortError') console.error(e);
+  }finally{
+    $('scan-progress').style.display='none';
+    btn.disabled=false; ico.className='ti ti-folder-open';
+  }
+}
+
+function _pickDirectoryFallback(){
+  // Create a hidden <input type="file" webkitdirectory> for Android Chrome
+  let input=document.getElementById('_dir-input');
+  if(!input){
+    input=document.createElement('input');
+    input.id='_dir-input';
+    input.type='file';
+    input.multiple=true;
+    input.setAttribute('webkitdirectory','');
+    input.setAttribute('directory','');
+    input.style.display='none';
+    document.body.appendChild(input);
+  }
+  input.value=''; // reset so re-picking same folder fires change
+  input.onchange=async()=>{
+    const files=Array.from(input.files);
+    if(!files.length) return;
+    const btn=$('btn-device'), ico=$('dev-ico');
+    btn.disabled=true; ico.className='ti ti-loader-2';
+    $('empty').style.display='none';
+    $('scan-progress').style.display='flex';
+    // Revoke existing local object URLs before clearing
+    S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
+    // Clear ALL items (server + local) so local data starts fresh
+    S.items=[];
+    _imgElCache.clear();
+    S.pagination={all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
+    hideEndOfList();
+    render(); updateCnt(); updateBadges();
+    // Infer folder name from first file path
+    const topFolder=files[0].webkitRelativePath.split('/')[0]||'Device files';
+    $('dir-tag').style.display='flex';
+    $('dir-name').textContent=topFolder;
+    $('scan-count').textContent='0 files found';
+    // Split by type and process in batches
+    const images=files.filter(f=>mtype(f.name)==='image');
+    const media=files.filter(f=>{ const t=mtype(f.name); return t==='video'||t==='audio'; });
+    const IMAGE_BATCH=20, MEDIA_BATCH=10;
+    async function processBatch(batch){
+      for(const file of batch){
+        const type=mtype(file.name);
+        if(type==='other') continue;
+        const url=URL.createObjectURL(file);
+        const item={
+          id:file.webkitRelativePath+'_'+file.lastModified,
+          name:file.name, type, ext:ext(file.name),
+          size:file.size, modified:file.lastModified/1000,
+          width:null, height:null, duration:null,
+          _local:url, _isLocal:true,
+        };
+        S.items.push(item);
+        $('scan-count').textContent=S.items.filter(i=>i._isLocal).length+' files found';
+        if(type==='image'){
+          const idx=S.items.length-1;
+          const img=new Image();
+          img.onload=()=>{ S.items[idx].width=img.naturalWidth; S.items[idx].height=img.naturalHeight; };
+          img.src=url;
+        }
+      }
+      doSort(); render(); updateCnt(); updateBadges();
+      await new Promise(r=>setTimeout(r,0));
+    }
+    for(let i=0;i<images.length;i+=IMAGE_BATCH) await processBatch(images.slice(i,i+IMAGE_BATCH));
+    for(let i=0;i<media.length;i+=MEDIA_BATCH) await processBatch(media.slice(i,i+MEDIA_BATCH));
+    $('scan-progress').style.display='none';
+    if(!S.items.length) $('empty').style.display='flex';
+    btn.disabled=false; ico.className='ti ti-folder-open';
+  };
+  input.click();
+}
+
+async function walkDir(dirHandle, basePath, count, onCount){
+  for await(const [name,handle] of dirHandle.entries()){
+    const path = basePath ? basePath+'/'+name : name;
+    if(handle.kind==='file'){
+      const e=ext(name), type=mtype(name);
+      if(type==='other') continue;
+      const file=await handle.getFile();
+      const url=URL.createObjectURL(file);
+      S.items.push({
+        id:path+'_'+file.lastModified, name:file.name, type, ext:e,
+        size:file.size, modified:file.lastModified/1000,
+        width:null, height:null, duration:null,
+        _local:url, _isLocal:true,
+      });
+      onCount(++count);
+      // extract image dimensions
+      if(type==='image'){
+        const idx=S.items.length-1;
+        const img=new Image();
+        img.onload=()=>{ S.items[idx].width=img.naturalWidth; S.items[idx].height=img.naturalHeight; };
+        img.src=url;
+      }
+    } else if(handle.kind==='directory'){
+      await walkDir(handle,path,count,onCount);
+    }
+  }
+}
+
+// ════════════════════════════════
+// SERVER FETCH
+// ════════════════════════════════
+async function fetchServer(){
+  if(S.loading) return;
+  if(!_vaultToken){
+    showAuthModal();
+    return;
+  }
+  // Already authenticated — show directory picker
+  showDirModal();
+}
+
+async function doFetchServer(skipHealth=false){
+  if(S.loading) return;
+  const btn=$('btn-srv'), ico=$('srv-ico');
+  btn.classList.add('loading'); ico.className='ti ti-loader-2';
+  setDot('loading');
+  try{
+    // When running inside the Android WebView, probe LAN then Tailscale
+    // via the native bridge before making any API calls.
+    if(window.VaultBridge && window.VaultBridge.probeAndGetServer){
+      const resolved = window.VaultBridge.probeAndGetServer(); // sync, runs on bridge thread
+      if(!resolved){
+        throw new Error('unreachable');
+      }
+      // Update the runtime SERVER value so all subsequent fetches use it
+      window._resolvedServer = resolved;
+    }
+    if(!skipHealth){
+      const srvUrl = window._resolvedServer || SERVER;
+      const r=await fetch(srvUrl+'/health',{signal:AbortSignal.timeout(4000)});
+      if(!r.ok) throw new Error();
+    }
+    setSrvStatus(true);
+    // Close sidebar and backdrop on all screen sizes
+    closeSidebarMobile();
+    $('sidebar').classList.add('collapsed');
+    // Revoke local object URLs to free memory and prevent caching
+    S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
+    // Clear ALL items so server data doesn't mix with local
+    S.items=[];
+    _imgElCache.clear();
+    S.pagination = {all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
+    hideEndOfList();
+    await loadPage(0,true);
+    setupScroll();
+    setDot('idle');
+  }catch(e){
+    setSrvStatus(false,'Unreachable');
+    setDot('error');
+    setTimeout(()=>setDot('idle'),3000);
+  }finally{
+    btn.classList.remove('loading'); ico.className='ti ti-server-2';
+  }
+}
+
+async function loadPage(offset, reset=false){
+  if(S.loading) return;
+  S.loading=true; showLoader(true); setDot('loading');
+  // Show skeleton only on the very first fetch (reset + no items yet)
+  if(reset && offset===0 && S.items.filter(i=>i._isServer).length===0){
+    showSkeleton();
+  }
+  const sec = S.section;
+  const tp=sec!=='all'?`&type=${sec}`:'';
+  try{
+    const r=await fetch(`${getServer()}/api/media?offset=${offset}&limit=${PAGE}&sort=${S.sort}${tp}`,{headers:authHeaders()});
+    if(r.status===401){
+      // Token expired or invalid — clear and prompt re-auth
+      _vaultToken=''; localStorage.removeItem('vault_token');
+      S.loading=false; showLoader(false); setDot('idle');
+      hideSkeleton();
+      showAuthModal();
+      return;
+    }
+    if(!r.ok) throw new Error();
+    const d=await r.json();
+    S.pagination[sec].total  = d.total;
+    S.pagination[sec].offset = offset + d.items.length;
+    const ids=new Set(S.items.map(i=>i.id));
+    d.items.forEach(item=>{
+      if(!ids.has(item.id)){
+        item._serverUrl=`${getServer()}/api/stream?id=${encodeURIComponent(item.id)}&token=${encodeURIComponent(_vaultToken)}`;
+        item._thumbUrl=item.thumb_url?`${getServer()}${item.thumb_url}&token=${encodeURIComponent(_vaultToken)}`:null;
+        item._isServer=true;
+        S.items.push(item); ids.add(item.id);
+      }
+    });
+    hideSkeleton();
+    doSort(); render(); updateCnt(); updateBadges();
+    const pg = S.pagination[sec];
+    const allLoaded = pg.offset >= pg.total && pg.total > 0;
+    setDot(allLoaded ? 'idle' : 'loading');
+    if(allLoaded) showEndOfList(); else { hideEndOfList(); setTimeout(checkLoadMore,150); }
+  }catch(e){
+    hideSkeleton();
+    setDot('error'); setTimeout(()=>setDot('idle'),2000);
+  }finally{
+    S.loading=false; showLoader(false);
+  }
+}
+
+function checkLoadMore(){
+  const pg = S.pagination[S.section];
+  if(S.loading) return;
+  if(pg.offset < pg.total || (pg.total === 0 && pg.offset === 0)){
+    const sentinel=$('sentinel');
+    if(!sentinel) return;
+    const rect=sentinel.getBoundingClientRect();
+    if(rect.top < window.innerHeight + 400) loadPage(pg.offset);
+  }
+}
+
+function setupScroll(){
+  if(S.observer) S.observer.disconnect();
+  S.observer=new IntersectionObserver(ents=>{
+    if(!ents[0].isIntersecting||S.loading) return;
+    const pg = S.pagination[S.section];
+    if(pg.offset < pg.total || pg.total === 0) loadPage(pg.offset);
+  },{rootMargin:'400px'});
+  S.observer.observe($('sentinel'));
+  // Also check immediately in case content is too short to scroll
+  setTimeout(checkLoadMore, 100);
+}
+
+function showEndOfList(){
+  const el=$('end-of-list');
+  el.classList.add('visible');
+}
+function hideEndOfList(){
+  $('end-of-list').classList.remove('visible');
+}
+
+// ════════════════════════════════
+// PERSISTENT IMAGE ELEMENT CACHE
+// ════════════════════════════════
+// For every image item we create ONE <img> element and keep it alive forever.
+// Grid cards get a *clone* of that element so the original stays in the cache.
+// The viewer borrows the original's .src — already decoded, zero extra fetch.
+const _imgElCache = new Map(); // itemId → <img>
+
+function getOrCreateImgEl(item){
+  let el = _imgElCache.get(item.id);
+  if(!el){
+    el = document.createElement('img');
+    el.alt = '';
+    el.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;background:var(--bg2)';
+    const src = item._thumbUrl || item._local || item._serverUrl || '';
+    if(src) el.src = src;
+    _imgElCache.set(item.id, el);
+  }
+  return el;
+}
+
+// ════════════════════════════════
+// RENDER
+// ════════════════════════════════
+function render(){
+  const items=filtered();
+  const ge=$('g-grid'), me=$('g-masonry'), ee=$('empty');
+  if(!items.length){ ge.style.display='none'; me.style.display='none'; ee.style.display='flex'; return; }
+  ee.style.display='none';
+  if(S.layout==='grid'){
+    me.style.display='none'; ge.style.display='grid';
+    syncGrid(ge, items, buildGridCard);
+  } else {
+    ge.style.display='none'; me.style.display='grid';
+    syncGrid(me, items, buildMasonryCard);
+  }
+}
+
+// Diff-based sync: reuse card nodes when itemId matches, replace otherwise.
+function syncGrid(container, items, buildFn){
+  const snap = Array.from(container.children); // static snapshot — live collection shifts on mutation
+  // Remove excess
+  for(let i=items.length; i<snap.length; i++) container.removeChild(snap[i]);
+  items.forEach((item,i)=>{
+    const old = snap[i];
+    if(old && old.dataset.itemId === String(item.id)){
+      // Same item, same slot — patch onclick index only (changes after sort/filter)
+      old.setAttribute('onclick','openItem('+i+')');
+    } else {
+      const newNode = buildFn(item, i);
+      // Stagger animation for newly appended cards
+      if(!old) {
+        const stagger = Math.min((i - snap.length) * 30, 200);
+        newNode.style.animationDelay = stagger + 'ms';
+        newNode.classList.add('anim-in');
+      }
+      if(old) container.replaceChild(newNode, old);
+      else    container.appendChild(newNode);
+    }
+  });
+}
+
+// Build card as a real DOM node (not innerHTML) so we can embed the live <img>
+function buildGridCard(item, idx){
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.itemId = String(item.id);
+  card.setAttribute('onclick','openItem('+idx+')');
+
+  const t = item.type;
+  if(t === 'image'){
+    const imgEl = getOrCreateImgEl(item);
+    // Clone so the cache element stays detached and reusable
+    const clone = imgEl.cloneNode(false);
+    clone.className = 'card-img';
+    clone.src = imgEl.src; // copy resolved src
+    card.appendChild(clone);
+  } else if(t === 'video'){
+    const src = item._thumbUrl || '';
+    if(src){
+      const img = document.createElement('img');
+      img.className = 'card-img'; img.alt = ''; img.src = src;
+      card.appendChild(img);
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'card-ph';
+      ph.innerHTML = '<i class="ti ti-video"></i>';
+      card.appendChild(ph);
+    }
+    const pico = document.createElement('i');
+    pico.className = 'ti ti-player-play picon';
+    const hover = document.createElement('div');
+    hover.className = 'card-hover'; hover.appendChild(pico);
+    card.appendChild(hover);
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'card-ph';
+    ph.innerHTML = '<i class="ti ti-music"></i>';
+    card.appendChild(ph);
+    const pico = document.createElement('i');
+    pico.className = 'ti ti-music picon';
+    const hover = document.createElement('div');
+    hover.className = 'card-hover'; hover.appendChild(pico);
+    card.appendChild(hover);
+  }
+  if(t === 'image'){
+    const hover = document.createElement('div');
+    hover.className = 'card-hover';
+    card.appendChild(hover);
+  }
+
+  const badge = document.createElement('div');
+  badge.className = 'card-badge badge-'+t;
+  badge.textContent = t;
+  card.appendChild(badge);
+  return card;
+}
+
+function buildMasonryCard(item, idx){
+  const t = item.type;
+  const landscape = (item.width&&item.height) ? item.width>item.height : true;
+  const card = document.createElement('div');
+  card.className = 'card ' + (landscape?'landscape':'portrait');
+  card.dataset.itemId = String(item.id);
+  card.setAttribute('onclick','openItem('+idx+')');
+
+  if(t === 'image'){
+    const imgEl = getOrCreateImgEl(item);
+    const clone = imgEl.cloneNode(false);
+    clone.className = 'card-img';
+    clone.style.cssText = 'width:100%;display:block;object-fit:cover;height:auto';
+    clone.src = imgEl.src;
+    card.appendChild(clone);
+    const hover = document.createElement('div');
+    hover.className = 'card-hover';
+    card.appendChild(hover);
+  } else if(t === 'video'){
+    const src = item._thumbUrl || '';
+    if(src){
+      const img = document.createElement('img');
+      img.className = 'card-img'; img.alt = ''; img.src = src;
+      img.style.cssText = 'width:100%;display:block;object-fit:cover;height:auto';
+      card.appendChild(img);
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'card-ph';
+      ph.innerHTML = '<i class="ti ti-video"></i>';
+      card.appendChild(ph);
+    }
+    const pico = document.createElement('i');
+    pico.className = 'ti ti-player-play picon';
+    const hover = document.createElement('div');
+    hover.className = 'card-hover'; hover.appendChild(pico);
+    card.appendChild(hover);
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'card-ph';
+    ph.innerHTML = '<i class="ti ti-music"></i>';
+    card.appendChild(ph);
+    const pico = document.createElement('i');
+    pico.className = 'ti ti-music picon';
+    const hover = document.createElement('div');
+    hover.className = 'card-hover'; hover.appendChild(pico);
+    card.appendChild(hover);
+  }
+
+  const badge = document.createElement('div');
+  badge.className = 'card-badge badge-'+t;
+  badge.textContent = t;
+  card.appendChild(badge);
+
+  const meta = document.createElement('div');
+  meta.className = 'card-meta';
+  meta.innerHTML = `<div class="card-name">${esc(item.name)}</div>
+    <div class="card-sub">
+      <div class="tdot td-${t}"></div>
+      <span class="card-det">${fsize(item.size)}</span>
+      ${item.duration?`<span class="card-det"> · ${fdur(item.duration)}</span>`:''}
+    </div>`;
+  card.appendChild(meta);
+  return card;
+}
+
+// ════════════════════════════════
+// IMAGE VIEWER  – two-panel swipe (no fetch gap)
+// ════════════════════════════════
+// The viewer has two <img> slots: "current" (visible) and "next" (preloaded offscreen).
+// On swipe: next slot already has the image decoded → instant swap, animate simultaneously.
+
+const _imgCur  = $('img-el');        // the visible img element (existing in HTML)
+let   _imgPreA = null;               // preload img object for prev
+let   _imgPreB = null;               // preload img object for next
+
+function _srcForItem(item){
+  return item._local || item._serverUrl || '';
+}
+
+// Preload prev & next images into Image() objects so they're decoded before needed
+function preloadAdjacentImages(){
+  const tItems=filtered().filter(i=>i.type==='image');
+  const cur=S.vi.img;
+  const prevIdx=(cur-1+tItems.length)%tItems.length;
+  const nextIdx=(cur+1)%tItems.length;
+  // Warm the img element cache (also used by grid cards)
+  if(tItems[prevIdx]) _imgPreA = getOrCreateImgEl(tItems[prevIdx]);
+  if(tItems[nextIdx]) _imgPreB = getOrCreateImgEl(tItems[nextIdx]);
+}
+
+function openItem(gIdx){
+  const items=filtered();
+  const item=items[gIdx];
+  if(!item) return;
+  const vk=item.type==='image'?'img':item.type==='video'?'vid':'aud';
+  const tItems=items.filter(i=>i.type===item.type);
+  S.vi[vk]=tItems.findIndex(i=>i.id===item.id);
+
+  if(vk==='img'){
+    // Use the cached img element's src — it's already decoded by the browser (no extra fetch)
+    const cached = _imgElCache.get(item.id);
+    const src = (cached && cached.src) ? cached.src : _srcForItem(item);
+    imgZoom=1; imgPanX=0; imgPanY=0;
+    _imgCur.src = src;
+    _imgCur.style.cssText='transform:none;opacity:1;transition:none';
+    $('img-name').textContent=item.name;
+    updateImgCounter(tItems);
+    $('vimg').classList.add('open');
+    document.body.style.overflow='hidden';
+    history.pushState({viewer:'img'},'');
+    preloadAdjacentImages();
+  } else {
+    openV(vk, tItems[S.vi[vk]]);
+  }
+}
+
+function openV(vk, item){
+  if(!item) return;
+  const url=item._serverUrl||item._local||'';
+
+  if(vk==='img'){
+    const src=_srcForItem(item);
+    imgZoom=1; imgPanX=0; imgPanY=0;
+    _imgCur.src=src;
+    _imgCur.style.cssText='transform:none;opacity:1;transition:none';
+    $('img-name').textContent=item.name;
+    const tItems=filtered().filter(i=>i.type==='image');
+    updateImgCounter(tItems);
+    $('vimg').classList.add('open');
+    document.body.style.overflow='hidden';
+    preloadAdjacentImages();
+
+  } else if(vk==='vid'){
+    $('vid-name').textContent=item.name;
+    const v=$('vid-el');
+    v.src=url; v.load(); v.play().catch(()=>{});
+    $('vid-pp-ico').className='ti ti-player-pause';
+    // Reset speed
+    _speedIdx=2; vidEl.playbackRate=1; $('vid-speed-btn').textContent='1×';
+    $('vvid').classList.add('open');
+    document.body.style.overflow='hidden';
+
+  } else {
+    $('aud-bar-name').textContent=item.name;
+    $('aud-track').textContent=item.name.replace(/\.[^.]+$/,'');
+    $('aud-sub').textContent=(item.ext||'').replace('.','').toUpperCase()+(item.duration?' · '+fdur(item.duration):'');
+    const a=$('aud-el');
+    a.src=url; a.load(); a.play().catch(()=>{});
+    a.playbackRate=S.audSpeed;
+    $('pp-ico').className='ti ti-player-pause';
+    $('mini-pp-ico').className='ti ti-player-pause';
+    $('mini-name').textContent=item.name.replace(/\.[^.]+$/,'');
+    $('mini-sub').textContent=(item.ext||'').replace('.','').toUpperCase();
+    $('vaud').classList.add('open');
+    document.body.style.overflow='hidden';
+    $('mini-player').classList.add('visible');
+    S.miniVisible=true;
+  }
+}
+
+function updateImgCounter(tItems){
+  const total=tItems.length;
+  $('img-counter').textContent = total>1?(S.vi.img+1)+'/'+total:'';
+  // dots (show up to 7)
+  const dots=$('vimg-dots');
+  if(total<=1||total>30){dots.innerHTML='';return;}
+  const show=Math.min(total,7);
+  let html='';
+  for(let i=0;i<show;i++) html+=`<div class="vimg-dot${i===S.vi.img%show?' active':''}"></div>`;
+  dots.innerHTML=html;
+}
+
+function closeV(vk){
+  document.getElementById('v'+vk).classList.remove('open');
+  document.body.style.overflow='';
+  if(vk==='vid'){const v=$('vid-el');v.pause();v.src='';}
+  if(vk==='aud' && !$('aud-el').paused){
+    // don't stop audio, show mini player instead
+    $('mini-player').classList.add('visible');
+    return;
+  }
+  if(vk==='aud'){$('vaud').classList.remove('open');}
+}
+
+function navV(vk,dir){
+  if(vk==='img'){
+    doImgNav(dir);
+    return;
+  }
+  const type=vk==='vid'?'video':'audio';
+  const tItems=filtered().filter(i=>i.type===type);
+  let idx=S.vi[vk]+dir;
+  if(idx<0) idx=tItems.length-1;
+  if(idx>=tItems.length) idx=0;
+  S.vi[vk]=idx;
+  openV(vk, tItems[idx]);
+}
+
+// ════════════════════════════════
+// IMAGE SWIPE + PINCH ZOOM + PAN
+// ════════════════════════════════
+const stage=$('vimg-stage');
+let imgSwipeStartX=0,imgSwipeStartY=0,imgSwipeDx=0,imgSwipeActive=false,imgSwipeScrollLocked=null,imgSwiping=false;
+let imgSwipeVelX=0,imgSwipeLastX=0,imgSwipeLastT=0;
+let _imgNext=null,_imgPrev=null;
+
+// Zoom state
+let imgZoom=1, imgPanX=0, imgPanY=0;
+let pinchStartDist=0, pinchStartZoom=1;
+let pinchStartMidX=0, pinchStartMidY=0, pinchStartPanX=0, pinchStartPanY=0;
+let isPinching=false;
+
+function applyImgTransform(el, z, px, py, transition){
+  el.style.transition = transition||'none';
+  el.style.transform = z===1&&px===0&&py===0 ? 'none' : `translate(${px}px,${py}px) scale(${z})`;
+}
+
+function resetImgZoom(el){
+  imgZoom=1; imgPanX=0; imgPanY=0;
+  applyImgTransform(el,1,0,0,'transform .2s cubic-bezier(.25,.46,.45,.94)');
+}
+
+function clampPan(z, px, py, el){
+  const W=stage.offsetWidth, H=stage.offsetHeight;
+  const iW=el.naturalWidth||el.offsetWidth||W;
+  const iH=el.naturalHeight||el.offsetHeight||H;
+  const scale=Math.min(W/iW,H/iH)*z;
+  const maxPX=Math.max(0,(iW*scale-W)/2);
+  const maxPY=Math.max(0,(iH*scale-H)/2);
+  return { px:Math.max(-maxPX,Math.min(maxPX,px)), py:Math.max(-maxPY,Math.min(maxPY,py)) };
+}
+
+function _removeAdjacentImgs(){
+  if(_imgNext){try{stage.removeChild(_imgNext);}catch(e){}_imgNext=null;}
+  if(_imgPrev){try{stage.removeChild(_imgPrev);}catch(e){}_imgPrev=null;}
+}
+
+stage.addEventListener('touchstart',e=>{
+  if(imgSwiping) return;
+  if(e.touches.length===2){
+    // pinch start
+    isPinching=true; imgSwipeActive=false;
+    _removeAdjacentImgs();
+    const t0=e.touches[0], t1=e.touches[1];
+    pinchStartDist=Math.hypot(t1.clientX-t0.clientX,t1.clientY-t0.clientY);
+    pinchStartZoom=imgZoom;
+    pinchStartMidX=(t0.clientX+t1.clientX)/2;
+    pinchStartMidY=(t0.clientY+t1.clientY)/2;
+    pinchStartPanX=imgPanX; pinchStartPanY=imgPanY;
+    return;
+  }
+  if(e.touches.length===1 && !isPinching){
+    imgSwipeStartX=e.touches[0].clientX;
+    imgSwipeStartY=e.touches[0].clientY;
+    imgSwipeDx=0; imgSwipeActive=true; imgSwipeScrollLocked=null;
+    imgSwipeVelX=0; imgSwipeLastX=imgSwipeStartX; imgSwipeLastT=Date.now();
+    // Pre-load adjacent images for live swipe preview (only when not zoomed)
+    if(imgZoom<=1){
+      const tItems=filtered().filter(i=>i.type==='image');
+      const W=stage.offsetWidth;
+      const ni=S.vi.img+1, pi=S.vi.img-1;
+      if(ni<tItems.length){
+        _imgNext=document.createElement('img');
+        _imgNext.src=_srcForItem(tItems[ni]);
+        _imgNext.style.cssText=`position:absolute;max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;transform:translateX(${W}px);transition:none;will-change:transform;user-select:none;`;
+        stage.appendChild(_imgNext);
+      }
+      if(pi>=0){
+        _imgPrev=document.createElement('img');
+        _imgPrev.src=_srcForItem(tItems[pi]);
+        _imgPrev.style.cssText=`position:absolute;max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;transform:translateX(${-W}px);transition:none;will-change:transform;user-select:none;`;
+        stage.appendChild(_imgPrev);
+      }
+    }
+    applyImgTransform(_imgCur,imgZoom,imgPanX,imgPanY);
+  }
+},{passive:true});
+
+stage.addEventListener('touchmove',e=>{
+  if(imgSwiping) return;
+  if(e.touches.length===2&&isPinching){
+    e.preventDefault();
+    const t0=e.touches[0],t1=e.touches[1];
+    const dist=Math.hypot(t1.clientX-t0.clientX,t1.clientY-t0.clientY);
+    const newZoom=Math.max(1,Math.min(5,pinchStartZoom*(dist/pinchStartDist)));
+    const midX=(t0.clientX+t1.clientX)/2;
+    const midY=(t0.clientY+t1.clientY)/2;
+    const dMidX=midX-pinchStartMidX, dMidY=midY-pinchStartMidY;
+    let newPX=pinchStartPanX+dMidX, newPY=pinchStartPanY+dMidY;
+    const c=clampPan(newZoom,newPX,newPY,_imgCur);
+    imgZoom=newZoom; imgPanX=c.px; imgPanY=c.py;
+    applyImgTransform(_imgCur,imgZoom,imgPanX,imgPanY);
+    return;
+  }
+  if(!imgSwipeActive||isPinching) return;
+  const dx=e.touches[0].clientX-imgSwipeStartX;
+  const dy=e.touches[0].clientY-imgSwipeStartY;
+  if(imgSwipeScrollLocked===null){
+    if(Math.abs(dx)<5&&Math.abs(dy)<5) return;
+    imgSwipeScrollLocked=Math.abs(dx)>Math.abs(dy);
+  }
+  if(imgZoom>1){
+    e.preventDefault();
+    const newPX=imgPanX+dx*0.6, newPY=imgPanY+dy*0.6;
+    const c=clampPan(imgZoom,newPX,newPY,_imgCur);
+    applyImgTransform(_imgCur,imgZoom,c.px,c.py);
+    imgSwipeStartX=e.touches[0].clientX;
+    imgSwipeStartY=e.touches[0].clientY;
+    imgPanX=c.px; imgPanY=c.py;
+    return;
+  }
+  if(!imgSwipeScrollLocked) return;
+  e.preventDefault();
+  // Velocity tracking
+  const now=Date.now(), dt=Math.max(1,now-imgSwipeLastT);
+  imgSwipeVelX=(e.touches[0].clientX-imgSwipeLastX)/dt;
+  imgSwipeLastX=e.touches[0].clientX; imgSwipeLastT=now;
+  imgSwipeDx=dx;
+  const W=stage.offsetWidth;
+  const tItems=filtered().filter(i=>i.type==='image');
+  const atStart=S.vi.img===0, atEnd=S.vi.img===tItems.length-1;
+  let applied=dx;
+  if((dx>0&&atStart)||(dx<0&&atEnd)) applied=dx*0.22; // rubber-band at edges
+  // Move current and adjacent images together
+  _imgCur.style.transition='none';
+  _imgCur.style.transform=`translateX(${applied}px)`;
+  if(_imgNext){ _imgNext.style.transition='none'; _imgNext.style.transform=`translateX(${W+applied}px)`; }
+  if(_imgPrev){ _imgPrev.style.transition='none'; _imgPrev.style.transform=`translateX(${-W+applied}px)`; }
+},{passive:false});
+
+stage.addEventListener('touchend',e=>{
+  if(e.touches.length<2) isPinching=false;
+  if(!imgSwipeActive||imgSwiping) return;
+  imgSwipeActive=false;
+  if(imgZoom>1){
+    const c=clampPan(imgZoom,imgPanX,imgPanY,_imgCur);
+    imgPanX=c.px; imgPanY=c.py;
+    applyImgTransform(_imgCur,imgZoom,imgPanX,imgPanY,'transform .2s ease');
+    _removeAdjacentImgs();
+    return;
+  }
+  const W=stage.offsetWidth;
+  const tItems=filtered().filter(i=>i.type==='image');
+  const byDist=Math.abs(imgSwipeDx)>W*0.28;
+  const byVel=Math.abs(imgSwipeVelX)>0.3;
+  const dir=imgSwipeDx<0?1:-1;
+  const canGo=dir===1?(S.vi.img<tItems.length-1):(S.vi.img>0);
+
+  if((byDist||byVel)&&canGo){
+    imgSwiping=true;
+    const nextIdx=S.vi.img+dir;
+    const nextItem=tItems[nextIdx]; // capture now, before any async
+    const dur=Math.max(220, 320-Math.abs(imgSwipeVelX)*60);
+    const ease=`transform ${dur}ms cubic-bezier(.22,1,.36,1)`; // spring-like
+    const exitX=dir<0?W:-W;
+    _imgCur.style.transition=ease;
+    _imgCur.style.transform=`translateX(${exitX}px)`;
+    const adjEl=dir===1?_imgNext:_imgPrev;
+    if(adjEl){ adjEl.style.transition=ease; adjEl.style.transform='translateX(0)'; }
+    setTimeout(()=>{
+      S.vi.img=nextIdx;
+      _imgCur.src=_srcForItem(nextItem); // use captured item, never stale
+      _imgCur.style.cssText='transform:none;transition:none;max-width:100%;max-height:100%;object-fit:contain;display:block;pointer-events:none;will-change:transform;user-select:none;-webkit-user-drag:none;transform-origin:center center;';
+      _removeAdjacentImgs();
+      imgSwipeDx=0; imgSwipeVelX=0;
+      $('img-name').textContent=nextItem.name;
+      updateImgCounter(tItems);
+      preloadAdjacentImages();
+      if(dir>0&&nextIdx>=tItems.length-3){
+        const pg=S.pagination[S.section];
+        if(pg.offset<pg.total&&!S.loading) loadPage(pg.offset);
+      }
+      imgSwiping=false; // unlock only after everything is settled
+    },dur+16);
+  } else {
+    // Spring back — all images return to rest position
+    const ease='transform .3s cubic-bezier(.25,.46,.45,.94)';
+    _imgCur.style.transition=ease; _imgCur.style.transform='translateX(0)';
+    if(_imgNext){ _imgNext.style.transition=ease; _imgNext.style.transform=`translateX(${W}px)`; }
+    if(_imgPrev){ _imgPrev.style.transition=ease; _imgPrev.style.transform=`translateX(${-W}px)`; }
+    setTimeout(()=>{
+      _imgCur.style.transition='none'; _imgCur.style.transform='';
+      _removeAdjacentImgs();
+    },320);
+  }
+});
+
+// Double-tap to zoom/reset
+let imgLastTap=0;
+stage.addEventListener('click',e=>{
+  if(imgSwiping) return;
+  const now=Date.now();
+  if(now-imgLastTap<300){
+    if(imgZoom>1) resetImgZoom(_imgCur);
+    else {
+      imgZoom=2.5; imgPanX=0; imgPanY=0;
+      applyImgTransform(_imgCur,2.5,0,0,'transform .2s cubic-bezier(.25,.46,.45,.94)');
+    }
+  }
+  imgLastTap=now;
+});
+
+function doImgNav(dir){
+  const tItems=filtered().filter(i=>i.type==='image');
+  let nextIdx=S.vi.img+dir;
+  if(nextIdx<0) nextIdx=tItems.length-1;
+  if(nextIdx>=tItems.length) nextIdx=0;
+
+  // Fetch next server batch when approaching the end of loaded images
+  if(dir>0 && nextIdx>=tItems.length-3){
+    const pg = S.pagination[S.section];
+    if(pg.offset < pg.total && !S.loading) loadPage(pg.offset);
+  }
+
+  const nextItem=tItems[nextIdx];
+  // Always derive src directly from item to avoid stale cache lookups
+  const nextSrc = _srcForItem(nextItem);
+
+  // If already animating, snap current to rest immediately and proceed
+  if(imgSwiping){
+    _imgCur.style.transition='none';
+    _imgCur.style.transform='none';
+    _removeAdjacentImgs();
+    imgSwiping=false;
+  }
+
+  imgSwiping=true;
+  // Reset zoom for transition
+  imgZoom=1; imgPanX=0; imgPanY=0;
+  const W=stage.offsetWidth;
+  const exitX=dir<0?W:-W;
+  const enterX=dir<0?-W:W;
+
+  // Create a temp img that enters from the side
+  const incoming=document.createElement('img');
+  incoming.src=nextSrc;
+  incoming.style.cssText=`position:absolute;max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;transform:translateX(${enterX}px);transition:none;will-change:transform;user-select:none;transform-origin:center center;`;
+  stage.appendChild(incoming);
+
+  // Animate: current exits, incoming enters — simultaneously, no gap
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      const ease='transform .22s cubic-bezier(.4,0,.2,1)';
+      applyImgTransform(_imgCur,1,exitX,0,ease);
+      incoming.style.transition=ease;
+      incoming.style.transform='translateX(0)';
+
+      setTimeout(()=>{
+        // Promote incoming to current
+        S.vi.img=nextIdx;
+        _imgCur.src=nextSrc;
+        _imgCur.style.cssText='transform:none;transition:none;max-width:100%;max-height:100%;object-fit:contain;display:block;pointer-events:none;will-change:transform;user-select:none;-webkit-user-drag:none;transform-origin:center center;';
+        try{ stage.removeChild(incoming); }catch(e){}
+        imgSwiping=false;
+        // Update UI
+        $('img-name').textContent=nextItem.name;
+        updateImgCounter(tItems);
+        preloadAdjacentImages();
+      },250);
+    });
+  });
+}
+
+// ════════════════════════════════
+// VIDEO CONTROLS
+// ════════════════════════════════
+const vidEl=$('vid-el');
+let vidCtrlTimer=null;
+
+function showVidControls(autoHide=false){
+  $('vid-controls').classList.add('visible');
+  $('vvid-bar').classList.add('visible');
+  clearTimeout(vidCtrlTimer);
+  if(autoHide) vidCtrlTimer=setTimeout(()=>{
+    if(!vidProgDragging){
+      $('vid-controls').classList.remove('visible');
+      $('vvid-bar').classList.remove('visible');
+    }
+  }, 3500);
+}
+function hideVidControls(){
+  clearTimeout(vidCtrlTimer);
+  $('vid-controls').classList.remove('visible');
+  $('vvid-bar').classList.remove('visible');
+}
+
+// ── Center flash (play/pause feedback) ──
+let vidFlashTimer=null;
+function flashCenter(icon){
+  const el=$('vid-center-flash'), ico=$('vid-flash-ico');
+  ico.className='ti '+icon;
+  el.classList.add('show');
+  clearTimeout(vidFlashTimer);
+  vidFlashTimer=setTimeout(()=>el.classList.remove('show'),500);
+}
+
+// ── Double-tap to seek ──
+let vidTapTimer=null, vidTapCount=0, vidTapSide=null;
+let vidStageTouchMoved=false, vidStageTouchStartX=0, vidStageTouchStartY=0;
+
+function showRipple(side){
+  const el=side==='l'?$('vid-ripple-l'):$('vid-ripple-r');
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),500);
+}
+
+$('vvid-stage').addEventListener('touchstart',e=>{
+  if(e.target.closest('.vid-controls,.vid-btn')) return;
+  vidStageTouchMoved=false;
+  vidStageTouchStartX=e.touches[0].clientX;
+  vidStageTouchStartY=e.touches[0].clientY;
+},{passive:true});
+
+$('vvid-stage').addEventListener('touchmove',e=>{
+  const dx=Math.abs(e.touches[0].clientX-vidStageTouchStartX);
+  const dy=Math.abs(e.touches[0].clientY-vidStageTouchStartY);
+  if(dx>8||dy>8) vidStageTouchMoved=true;
+},{passive:true});
+
+$('vvid-stage').addEventListener('touchend',e=>{
+  if(vidStageTouchMoved) return;
+  if(e.target.closest('.vid-controls,.vid-btn,.vid-prog-hitbox')) return;
+  const x=e.changedTouches[0].clientX;
+  const W=window.innerWidth;
+  const side=x<W*0.35?'l':x>W*0.65?'r':null;
+  const visible=$('vid-controls').classList.contains('visible');
+
+  if(side){
+    // Edge zones: double-tap seeks, single tap toggles controls
+    vidTapSide=side;
+    vidTapCount++;
+    clearTimeout(vidTapTimer);
+    vidTapTimer=setTimeout(()=>{
+      if(vidTapCount>=2){
+        const dir=side==='l'?-10:10;
+        vidEl.currentTime=Math.max(0,Math.min(vidEl.duration||0,vidEl.currentTime+dir));
+        showRipple(side);
+        showVidControls(true); // restart 3.5s after seek
+      } else {
+        // single tap on edge — same as center: toggle
+        if(visible) hideVidControls(); else showVidControls(true);
+      }
+      vidTapCount=0;
+    },220);
+  } else {
+    // Center: toggle
+    clearTimeout(vidTapTimer); vidTapCount=0;
+    if(visible) hideVidControls(); else showVidControls(true);
+  }
+},{passive:true});
+
+$('vvid-stage').addEventListener('mousemove',()=>showVidControls(true));
+
+// ── Seekbar ──
+let vidProgDragging=false, vidWasPaused=false;
+const vidProgEl=$('vid-prog');
+
+function vidSeekToX(clientX, updateEl=true){
+  const r=vidProgEl.getBoundingClientRect();
+  const pct=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+  // Tooltip
+  const tt=$('vid-tooltip');
+  if(vidEl.duration){
+    tt.textContent=fdur(pct*vidEl.duration);
+    tt.style.left=(pct*100)+'%';
+  }
+  if(!updateEl) return pct;
+  if(!vidEl.duration) return 0;
+  vidEl.currentTime=pct*vidEl.duration;
+  $('vid-fill').style.width=(pct*100)+'%';
+  $('vid-thumb').style.left=(pct*100)+'%';
+  $('vid-time').textContent=fdur(pct*vidEl.duration)+' / '+fdur(vidEl.duration);
+  return pct;
+}
+
+vidProgEl.addEventListener('mousedown',e=>{
+  e.stopPropagation(); e.preventDefault();
+  vidProgDragging=true; vidWasPaused=vidEl.paused;
+  vidEl.pause(); vidProgEl.classList.add('dragging');
+  vidSeekToX(e.clientX); showVidControls(false);
+});
+document.addEventListener('mousemove',e=>{ if(vidProgDragging) vidSeekToX(e.clientX); });
+document.addEventListener('mouseup',e=>{
+  if(!vidProgDragging) return;
+  vidProgDragging=false; vidProgEl.classList.remove('dragging');
+  vidSeekToX(e.clientX);
+  if(!vidWasPaused) vidEl.play().catch(()=>{});
+  showVidControls(true);
+});
+
+// Hover tooltip without dragging
+vidProgEl.addEventListener('mousemove',e=>{ if(!vidProgDragging) vidSeekToX(e.clientX,false); });
+
+vidProgEl.addEventListener('touchstart',e=>{
+  e.stopPropagation(); e.preventDefault();
+  vidProgDragging=true; vidWasPaused=vidEl.paused;
+  vidEl.pause(); vidProgEl.classList.add('dragging');
+  vidSeekToX(e.touches[0].clientX); showVidControls(false);
+},{passive:false});
+vidProgEl.addEventListener('touchmove',e=>{
+  e.stopPropagation(); e.preventDefault();
+  vidSeekToX(e.touches[0].clientX);
+},{passive:false});
+vidProgEl.addEventListener('touchend',e=>{
+  e.stopPropagation();
+  vidProgDragging=false; vidProgEl.classList.remove('dragging');
+  if(e.changedTouches.length) vidSeekToX(e.changedTouches[0].clientX);
+  if(!vidWasPaused) vidEl.play().catch(()=>{});
+  showVidControls(true);
+},{passive:false});
+
+// ── Time + buffer update ──
+vidEl.addEventListener('timeupdate',()=>{
+  if(vidProgDragging) return;
+  const p=vidEl.duration?(vidEl.currentTime/vidEl.duration)*100:0;
+  $('vid-fill').style.width=p+'%';
+  $('vid-thumb').style.left=p+'%';
+  $('vid-time').textContent=fdur(vidEl.currentTime)+' / '+fdur(vidEl.duration||0);
+});
+vidEl.addEventListener('progress',()=>{
+  if(!vidEl.duration||!vidEl.buffered.length) return;
+  const b=vidEl.buffered.end(vidEl.buffered.length-1)/vidEl.duration*100;
+  $('vid-buf').style.width=b+'%';
+});
+vidEl.addEventListener('play',()=>{
+  $('vid-pp-ico').className='ti ti-player-pause';
+  showVidControls(true);
+});
+vidEl.addEventListener('pause',()=>{ $('vid-pp-ico').className='ti ti-player-play'; });
+vidEl.addEventListener('ended',()=>{ showVidControls(false); });
+
+// ── Controls ──
+function toggleVidPlay(){
+  if(vidEl.paused){ vidEl.play().catch(()=>{}); flashCenter('ti-player-play'); }
+  else { vidEl.pause(); flashCenter('ti-player-pause'); }
+  showVidControls(true);
+}
+function seekVidRel(s){
+  vidEl.currentTime=Math.max(0,Math.min(vidEl.duration||0,(vidEl.currentTime||0)+s));
+  showVidControls(true);
+}
+let _volPopupOpen=false;
+function toggleVolPopup(e){
+  e.stopPropagation();
+  _volPopupOpen=!_volPopupOpen;
+  $('vid-vol-popup').classList.toggle('open',_volPopupOpen);
+}
+// Close volume popup when clicking elsewhere
+document.addEventListener('click',e=>{
+  if(_volPopupOpen && !$('vid-vol-wrap').contains(e.target)){
+    _volPopupOpen=false;
+    $('vid-vol-popup').classList.remove('open');
+  }
+});
+function toggleMute(){
+  vidEl.muted=!vidEl.muted;
+  $('vid-vol-ico').className=vidEl.muted?'ti ti-volume-off':'ti ti-volume';
+  $('vid-vol').value=vidEl.muted?0:vidEl.volume;
+  $('vid-vol-pct').textContent=vidEl.muted?'0%':Math.round(vidEl.volume*100)+'%';
+}
+function setVidVol(v){
+  vidEl.volume=parseFloat(v); vidEl.muted=parseFloat(v)==0;
+  $('vid-vol-ico').className=parseFloat(v)==0?'ti ti-volume-off':'ti ti-volume';
+  $('vid-vol-pct').textContent=Math.round(parseFloat(v)*100)+'%';
+}
+
+// ── Playback speed ──
+const SPEEDS=[0.5,0.75,1,1.25,1.5,2];
+let _speedIdx=2;
+function cycleSpeed(){
+  _speedIdx=(_speedIdx+1)%SPEEDS.length;
+  const s=SPEEDS[_speedIdx];
+  vidEl.playbackRate=s;
+  $('vid-speed-btn').textContent=s===1?'1×':s+'×';
+  showVidControls(true);
+}
+
+// ── Fullscreen ──
+function toggleFullscreen(){
+  if(!document.fullscreenElement) $('vvid').requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+document.addEventListener('fullscreenchange',()=>{
+  $('vid-fs-ico').className=document.fullscreenElement?'ti ti-minimize':'ti ti-maximize';
+});
+
+// Reset speed when opening a new video
+// Reset speed when opening a new video — handled in openV directly
+
+// ════════════════════════════════
+// AUDIO CONTROLS
+// ════════════════════════════════
+const audEl=$('aud-el');
+
+audEl.addEventListener('timeupdate',()=>{
+  if(audProgDragging) return;
+  const p=audEl.duration?(audEl.currentTime/audEl.duration)*100:0;
+  $('aud-fill').style.width=p+'%';
+  $('mini-fill').style.width=p+'%';
+  $('aud-cur').textContent=fdur(audEl.currentTime);
+  const thumb=$('aud-thumb');
+  if(thumb) thumb.style.left=p+'%';
+});
+audEl.addEventListener('loadedmetadata',()=>{ $('aud-dur').textContent=fdur(audEl.duration); });
+audEl.addEventListener('ended',()=>{
+  $('pp-ico').className='ti ti-player-play';
+  $('mini-pp-ico').className='ti ti-player-play';
+  navV('aud',1);
+});
+audEl.addEventListener('play',()=>{
+  $('pp-ico').className='ti ti-player-pause';
+  $('mini-pp-ico').className='ti ti-player-pause';
+});
+audEl.addEventListener('pause',()=>{
+  $('pp-ico').className='ti ti-player-play';
+  $('mini-pp-ico').className='ti ti-player-play';
+});
+
+function toggleAud(){
+  if(audEl.paused) audEl.play().catch(()=>{}); else audEl.pause();
+}
+function seekAud(e){} // kept for compatibility — unused
+function seekAudRel(s){ audEl.currentTime=Math.max(0,(audEl.currentTime||0)+s); }
+function setSpeed(btn){
+  document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  S.audSpeed=parseFloat(btn.dataset.s);
+  audEl.playbackRate=S.audSpeed;
+}
+
+// ── Audio seek bar — hitbox-based, mouse + touch, live thumb ──
+let audProgDragging=false;
+let audWasPaused=false;
+const audSeekEl=$('aud-seek');
+
+function audSeekToX(clientX){
+  const r=audSeekEl.getBoundingClientRect();
+  const pct=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+  if(!audEl.duration) return;
+  const t=pct*audEl.duration;
+  audEl.currentTime=t;
+  $('aud-fill').style.width=(pct*100)+'%';
+  $('aud-cur').textContent=fdur(t);
+  const thumb=$('aud-thumb');
+  if(thumb) thumb.style.left=(pct*100)+'%';
+}
+
+// Mouse (desktop)
+audSeekEl.addEventListener('mousedown',e=>{
+  audProgDragging=true; audWasPaused=audEl.paused;
+  audEl.pause();
+  audSeekEl.classList.add('dragging');
+  audSeekToX(e.clientX);
+});
+document.addEventListener('mousemove',e=>{
+  if(!audProgDragging) return;
+  audSeekToX(e.clientX);
+});
+document.addEventListener('mouseup',e=>{
+  if(!audProgDragging) return;
+  audProgDragging=false;
+  audSeekEl.classList.remove('dragging');
+  audSeekToX(e.clientX);
+  if(!audWasPaused) audEl.play().catch(()=>{});
+});
+
+// Touch (mobile)
+audSeekEl.addEventListener('touchstart',e=>{
+  e.preventDefault(); e.stopPropagation();
+  audProgDragging=true; audWasPaused=audEl.paused;
+  audEl.pause();
+  audSeekEl.classList.add('dragging');
+  audSeekToX(e.touches[0].clientX);
+},{passive:false});
+audSeekEl.addEventListener('touchmove',e=>{
+  e.preventDefault(); e.stopPropagation();
+  audSeekToX(e.touches[0].clientX);
+},{passive:false});
+audSeekEl.addEventListener('touchend',e=>{
+  e.stopPropagation();
+  audProgDragging=false;
+  audSeekEl.classList.remove('dragging');
+  if(e.changedTouches.length) audSeekToX(e.changedTouches[0].clientX);
+  if(!audWasPaused) audEl.play().catch(()=>{});
+},{passive:false});
+
+// ── Audio art swipe → change track ──
+const audArt=document.querySelector('.aud-art');
+let audArtSwipe={x:0,y:0,active:false,dx:0,locked:null,velX:0,lastX:0,lastT:0};
+
+audArt.addEventListener('touchstart',e=>{
+  const t=e.touches[0];
+  audArtSwipe={x:t.clientX,y:t.clientY,active:true,dx:0,locked:null,velX:0,lastX:t.clientX,lastT:Date.now()};
+  audArt.style.transition='none';
+},{passive:true});
+
+audArt.addEventListener('touchmove',e=>{
+  if(!audArtSwipe.active) return;
+  const t=e.touches[0];
+  const dx=t.clientX-audArtSwipe.x, dy=t.clientY-audArtSwipe.y;
+  if(audArtSwipe.locked===null){
+    if(Math.abs(dx)<4&&Math.abs(dy)<4) return;
+    audArtSwipe.locked=Math.abs(dx)>Math.abs(dy);
+  }
+  if(!audArtSwipe.locked) return;
+  e.preventDefault();
+  const now=Date.now(), dt=Math.max(1,now-audArtSwipe.lastT);
+  audArtSwipe.velX=(t.clientX-audArtSwipe.lastX)/dt;
+  audArtSwipe.lastX=t.clientX; audArtSwipe.lastT=now;
+  audArtSwipe.dx=dx;
+  // Follow finger with subtle tilt and fade
+  const rot=dx*0.018;
+  const fade=Math.max(0.45, 1-Math.abs(dx)/280);
+  audArt.style.transform=`translateX(${dx}px) rotate(${rot}deg)`;
+  audArt.style.opacity=fade;
+},{passive:false});
+
+audArt.addEventListener('touchend',()=>{
+  if(!audArtSwipe.active) return;
+  audArtSwipe.active=false;
+  const {dx,velX}=audArtSwipe;
+  const W=audArt.offsetWidth;
+  const byDist=Math.abs(dx)>W*0.3;
+  const byVel=Math.abs(velX)>0.35;
+
+  if(byDist||byVel){
+    const dir=dx<0?1:-1; // swipe left=next(1), swipe right=prev(-1)
+    const dur=Math.max(120, 200-Math.abs(velX)*120);
+    // Current card exits in swipe direction
+    const exitX=dx<0?`-${W+20}px`:`${W+20}px`;
+    // Incoming enters from OPPOSITE side: next from right, prev from left
+    const enterX=dir===1?`${W+20}px`:`-${W+20}px`;
+    audArt.style.transition=`transform ${dur}ms cubic-bezier(.4,0,1,1),opacity ${dur}ms`;
+    audArt.style.transform=`translateX(${exitX}) rotate(${dx<0?-5:5}deg)`;
+    audArt.style.opacity='0';
+    setTimeout(()=>{
+      audArt.style.transition='none';
+      audArt.style.transform=`translateX(${enterX})`;
+      audArt.style.opacity='0';
+      navV('aud',dir);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        audArt.style.transition=`transform ${dur}ms cubic-bezier(.25,.46,.45,.94),opacity ${Math.round(dur*0.8)}ms`;
+        audArt.style.transform='translateX(0) rotate(0deg)';
+        audArt.style.opacity='1';
+        setTimeout(()=>{
+          audArt.style.transition='';
+          audArt.style.transform='';
+          audArt.style.opacity='';
+        },dur+16);
+      }));
+    },dur);
+  } else {
+    // Spring back
+    audArt.style.transition='transform .3s cubic-bezier(.25,.46,.45,.94),opacity .2s';
+    audArt.style.transform='translateX(0) rotate(0deg)';
+    audArt.style.opacity='1';
+    setTimeout(()=>{ audArt.style.transition=''; audArt.style.transform=''; audArt.style.opacity=''; },320);
+  }
+});
+
+// ════════════════════════════════
+// MINI PLAYER
+// ════════════════════════════════
+function openMiniToFull(){
+  $('mini-player').classList.remove('visible');
+  $('vaud').classList.add('open');
+}
+function closeMini(){
+  audEl.pause(); audEl.src='';
+  $('mini-player').classList.remove('visible');
+  S.miniVisible=false;
+}
+
+// ════════════════════════════════
+// KEYBOARD + BACK
+// ════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    e.preventDefault();
+    if($('exit-modal').classList.contains('open')){
+      $('exit-modal').classList.remove('open');
+      history.pushState({vault:'base'},'');
+      return;
+    }
+    const open=['img','vid','aud'].find(k=>document.getElementById('v'+k).classList.contains('open'));
+    if(open){
+      if(open==='aud'&&!audEl.paused){
+        $('vaud').classList.remove('open');
+        document.body.style.overflow='';
+        $('mini-player').classList.add('visible');
+      } else { closeV(open); }
+      return;
+    }
+    if(_sectionHistory.length>1){
+      _sectionHistory.pop();
+      const prev=_sectionHistory[_sectionHistory.length-1];
+      const el=document.querySelector(`.nav-item[data-t="${prev}"]`);
+      if(el) _origSetSection(el);
+    } else {
+      showExitModal();
+    }
+    return;
+  }
+  const open=['img','vid','aud'].find(k=>document.getElementById('v'+k).classList.contains('open'));
+  if(!open) return;
+  if(e.key==='ArrowLeft')  navV(open,-1);
+  if(e.key==='ArrowRight') navV(open,1);
+  if(e.key===' '&&open==='vid'){e.preventDefault();toggleVidPlay();}
+  if(e.key===' '&&open==='aud'){e.preventDefault();toggleAud();}
+});
+
+// Popstate: back inside viewer = close viewer; back on base = confirm exit
+// ── Section history stack ──
+const _sectionHistory=['all']; // start with 'all'
+
+const _origSetSection=setSection;
+window.setSection=function(el){
+  const next=el.dataset.t;
+  if(next!==S.section){
+    _sectionHistory.push(next);
+    history.pushState({vault:'section',sec:next},'');
+  }
+  _origSetSection(el);
+};
+
+// Wrap openV to push viewer state
+(()=>{
+  const orig=openV;
+  window.openV=function(vk,item){
+    orig(vk,item);
+    history.pushState({viewer:vk},'');
+  };
+})();
+
+window.addEventListener('popstate',e=>{
+  if(_exitConfirmed) return; // user confirmed leave — let browser handle it
+  const state=e.state||{};
+  const open=['img','vid','aud'].find(k=>document.getElementById('v'+k).classList.contains('open'));
+
+  if(open){
+    // Close viewer, stay on current section
+    if(open==='aud'&&!audEl.paused){
+      $('vaud').classList.remove('open');
+      document.body.style.overflow='';
+      $('mini-player').classList.add('visible');
+    } else {
+      closeV(open);
+    }
+    // Re-push so next back goes to previous section or exit
+    history.pushState(
+      _sectionHistory.length>1?{vault:'section',sec:_sectionHistory[_sectionHistory.length-1]}:{vault:'base'},
+      ''
+    );
+    return;
+  }
+
+  if(state.vault==='section'||state.viewer){
+    // Already handled above — shouldn't normally reach here
+    history.pushState({vault:'base'},'');
+    return;
+  }
+
+  // No viewer open — go back a section if we have history, else exit confirm
+  if(_sectionHistory.length>1){
+    _sectionHistory.pop();
+    const prev=_sectionHistory[_sectionHistory.length-1];
+    const el=document.querySelector(`.nav-item[data-t="${prev}"]`);
+    if(el) _origSetSection(el); // use original to avoid pushing to history again
+    // Keep pushing base so next back comes here again
+    history.pushState({vault:'base'},'');
+  } else {
+    showExitModal();
+  }
+});
+
+// For actual tab/browser close we must use beforeunload (can't show custom UI then)
+// but we remove the returnValue so it's clean — our modal handles back/escape
+window.addEventListener('beforeunload',e=>{
+  // Revoke all object URLs on page unload to prevent any browser caching
+  S.items.forEach(i=>{ if(i._local) try{ URL.revokeObjectURL(i._local); }catch(e){} });
+});
+
+// ════════════════════════════════
+// SIDEBAR SWIPE GESTURE (mobile)
+// Starts well inside the left edge — avoids triggering OS back gesture
+// ════════════════════════════════
+(()=>{
+  const OPEN_ZONE_MIN=32;  // px from left edge: start of open-swipe zone (safely past OS gesture area)
+  const OPEN_ZONE_MAX=220; // px from left edge: end of open-swipe zone
+  const THRESHOLD=50;      // px drag distance to commit open/close
+  let _sx=0,_sy=0,_active=false,_dir=null;
+
+  document.addEventListener('touchstart',e=>{
+    // Don't intercept touches inside viewers or modals
+    if(document.querySelector('.open[id^="v"]')) return;
+    const t=e.touches[0];
+    _sx=t.clientX; _sy=t.clientY; _dir=null;
+    const sb=$('sidebar');
+    const isOpen=sb.classList.contains('sb-open');
+    // Open: touch must start between OPEN_ZONE_MIN–OPEN_ZONE_MAX from left
+    // Close: touch can start anywhere when sidebar is open
+    _active = isOpen || (_sx>=OPEN_ZONE_MIN && _sx<=OPEN_ZONE_MAX);
+  },{passive:true});
+
+  document.addEventListener('touchmove',e=>{
+    if(!_active) return;
+    const dx=e.touches[0].clientX-_sx;
+    const dy=e.touches[0].clientY-_sy;
+    if(!_dir && (Math.abs(dx)>8||Math.abs(dy)>8)){
+      _dir = Math.abs(dx)>Math.abs(dy) ? 'h' : 'v';
+    }
+    if(_dir==='v') _active=false;
+  },{passive:true});
+
+  document.addEventListener('touchend',e=>{
+    if(!_active||_dir!=='h') return;
+    _active=false;
+    if(window.innerWidth>768) return;
+    const dx=e.changedTouches[0].clientX-_sx;
+    const sb=$('sidebar');
+    const isOpen=sb.classList.contains('sb-open');
+    if(!isOpen && dx>THRESHOLD){
+      sb.classList.add('sb-open'); sb.classList.remove('collapsed');
+      _showSbOverlay(true);
+    } else if(isOpen && dx<-THRESHOLD){
+      closeSidebarMobile();
+    }
+  },{passive:true});
+})();
+
+// Seed history so first back press always hits our popstate handler
+history.replaceState({vault:'inner'},'');
+history.pushState({vault:'base'},'');
+
+// ════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════
+function updateCnt(){ const n=filtered().length; $('cnt').textContent=n+' item'+(n!==1?'s':''); }
+function updateBadges(){
+  const it=S.items;
+  $('b-all').textContent=it.length;
+  $('b-image').textContent=it.filter(i=>i.type==='image').length;
+  $('b-video').textContent=it.filter(i=>i.type==='video').length;
+  $('b-audio').textContent=it.filter(i=>i.type==='audio').length;
+}
+function setSrvStatus(ok,msg){
+  $('sdot').className='sdot '+(ok?'ok':'err');
+  $('srv-txt').textContent=ok?getServer().split('//')[1]:(msg||'Unreachable');
+}
+function showLoader(v){ $('loader').style.display=v?'flex':'none'; }
+
+// ════════════════════════════════
+// SKELETON CARDS
+// ════════════════════════════════
+function showSkeleton(){
+  const count = 8; // number of placeholder cards
+  const isGrid = S.layout === 'grid';
+  const sgEl = $('skeleton-grid');
+  const smEl = $('skeleton-masonry');
+
+  // Hide the one we're not using
+  if(isGrid){
+    smEl.style.display = 'none';
+    smEl.innerHTML = '';
+    sgEl.innerHTML = '';
+    for(let i=0;i<count;i++){
+      const c = document.createElement('div');
+      c.className = 'skel-grid-card skel-base';
+      sgEl.appendChild(c);
+    }
+    sgEl.style.display = 'grid';
+  } else {
+    sgEl.style.display = 'none';
+    sgEl.innerHTML = '';
+    smEl.innerHTML = '';
+    // Alternate landscape/portrait for visual variety
+    const patterns = ['landscape','portrait','portrait','landscape','portrait','landscape','portrait','portrait'];
+    for(let i=0;i<count;i++){
+      const c = document.createElement('div');
+      c.className = 'skel-masonry-card ' + (patterns[i % patterns.length]);
+      const img = document.createElement('div');
+      img.className = 'skel-masonry-img skel-base';
+      c.appendChild(img);
+      const meta = document.createElement('div');
+      meta.className = 'skel-masonry-meta';
+      const l1 = document.createElement('div');
+      l1.className = 'skel-masonry-line skel-base';
+      l1.style.width = (55 + Math.floor(i*13) % 35) + '%';
+      const l2 = document.createElement('div');
+      l2.className = 'skel-masonry-line skel-base';
+      l2.style.width = (30 + Math.floor(i*7) % 25) + '%';
+      meta.appendChild(l1); meta.appendChild(l2);
+      c.appendChild(meta);
+      smEl.appendChild(c);
+    }
+    smEl.style.display = 'grid';
+  }
+
+  // Hide real grid and empty state while skeleton shows
+  $('g-grid').style.display = 'none';
+  $('g-masonry').style.display = 'none';
+  $('empty').style.display = 'none';
+}
+
+function hideSkeleton(){
+  const sg = $('skeleton-grid');
+  const sm = $('skeleton-masonry');
+  sg.style.display = 'none';
+  sm.style.display = 'none';
+  sg.innerHTML = '';
+  sm.innerHTML = '';
+}
+</script>
+</body>
+</html>
