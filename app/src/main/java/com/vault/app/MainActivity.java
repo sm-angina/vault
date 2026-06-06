@@ -52,6 +52,19 @@ public class MainActivity extends Activity {
     // ── JS Bridge ─────────────────────────────────────────────────────────────
     public class VaultBridge {
 
+        /** Returns status bar height in CSS pixels (dp) for the sidebar offset */
+        @JavascriptInterface
+        public int getStatusBarHeight() {
+            int resourceId = getResources().getIdentifier(
+                "status_bar_height", "dimen", "android");
+            if (resourceId > 0) {
+                // Convert px to dp
+                float density = getResources().getDisplayMetrics().density;
+                return Math.round(getResources().getDimensionPixelSize(resourceId) / density);
+            }
+            return 24; // safe fallback
+        }
+
         /** Returns last resolved server URL (used at page load) */
         @JavascriptInterface
         public String getServerUrl() {
@@ -313,6 +326,13 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 return false;
             }
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                // Inject real status bar height so sidebar clears the status bar
+                int sbh = new VaultBridge().getStatusBarHeight();
+                view.evaluateJavascript(
+                    "document.documentElement.style.setProperty('--sat','" + sbh + "px')", null);
+            }
         });
 
         // Full-screen video support
@@ -352,12 +372,13 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ── Back button ───────────────────────────────────────────────────────────
+    // ── Back button — always delegate to JS handler ───────────────────────────
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && mWebView.canGoBack()) {
-            mWebView.goBack();
-            return true;
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            // Inject a JS back event — the page manages its own history stack
+            mWebView.evaluateJavascript("window._handleAndroidBack && window._handleAndroidBack()", null);
+            return true; // always consume — JS decides whether to show exit modal
         }
         return super.onKeyDown(keyCode, event);
     }

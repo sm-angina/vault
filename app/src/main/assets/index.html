@@ -30,6 +30,9 @@ body{height:100%;height:100dvh;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;display:flex;flex-direction:column;padding-top:var(--sat);padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar)}
 img{-webkit-user-drag:none;user-select:none}
 
+/* ── Android WebView: sidebar must clear the status bar ── */
+.sb-inner{padding-top:var(--sat)}
+
 /* ═══ TOPBAR ═══ */
 .topbar{
   height:var(--topbar);flex-shrink:0;
@@ -330,7 +333,8 @@ img{-webkit-user-drag:none;user-select:none}
 #vimg.open{display:flex;animation:viewerIn .22s cubic-bezier(.25,.46,.45,.94) both}
 .vimg-bar{
   position:absolute;top:0;left:0;right:0;
-  height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;
+  height:calc(50px + var(--sat));display:flex;align-items:flex-end;gap:10px;
+  padding:0 14px calc(8px);padding-top:var(--sat);
   background:linear-gradient(to bottom,rgba(0,0,0,.7),transparent);
   z-index:10;
 }
@@ -386,8 +390,8 @@ img{-webkit-user-drag:none;user-select:none}
 /* Top bar — fades with controls */
 .vvid-bar{
   position:absolute;top:0;left:0;right:0;z-index:10;
-  height:56px;display:flex;align-items:center;gap:4px;
-  padding:0 8px 0 2px;
+  height:calc(56px + var(--sat));display:flex;align-items:flex-end;gap:4px;
+  padding:0 8px 6px 2px;padding-top:var(--sat);
   background:linear-gradient(to bottom,rgba(0,0,0,.78) 0%,transparent 100%);
   opacity:0;transition:opacity .22s;pointer-events:none;
 }
@@ -552,28 +556,26 @@ img{-webkit-user-drag:none;user-select:none}
 }
 #vaud.open{display:flex;animation:viewerSlideUp .25s cubic-bezier(.25,.46,.45,.94) both}
 .vaud-bar{
-  height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;
+  height:calc(50px + var(--sat));display:flex;align-items:flex-end;gap:10px;
+  padding:0 14px 10px;padding-top:var(--sat);
   background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;
 }
 .vaud-close{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);cursor:pointer;color:var(--text2);border:1px solid var(--border2);background:var(--bg3);flex-shrink:0;-webkit-tap-highlight-color:transparent}
 .vaud-close i{font-size:15px}
 .vaud-title-bar{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vaud-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 28px;gap:22px;overflow:hidden}
+.vaud-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 28px 0;gap:20px;overflow:hidden}
 .aud-art{
   width:min(200px,55vw);height:min(200px,55vw);
   border-radius:var(--r-xl);background:var(--bg3);
   border:1px solid var(--border2);
   display:flex;align-items:center;justify-content:center;color:var(--text3);
-  flex-shrink:0;
-  touch-action:pan-y;
-  cursor:grab;
-  will-change:transform;
-  user-select:none;
+  flex-shrink:0;touch-action:pan-y;cursor:grab;will-change:transform;user-select:none;
 }
 .aud-art i{font-size:56px}
 .aud-info{text-align:center;width:100%}
 .aud-track{font-size:17px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .aud-sub{font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace;margin-top:3px}
+.vaud-controls{width:100%;display:flex;flex-direction:column;align-items:center;padding:8px 28px calc(20px + var(--sab));flex-shrink:0}
 .aud-player{width:100%;max-width:420px}
 /* seek bar — outer hitbox is tall for easy touch, inner track is thin visual */
 .aud-seek-wrap{
@@ -596,8 +598,8 @@ img{-webkit-user-drag:none;user-select:none}
 }
 .aud-seek-wrap:hover .aud-seek-thumb,
 .aud-seek-wrap.dragging .aud-seek-thumb{opacity:1}
-.aud-time-row{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);margin-bottom:18px;margin-top:2px}
-.aud-ctrls{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
+.aud-time-row{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);margin-bottom:12px;margin-top:2px}
+.aud-ctrls{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px}
 .abtn{
   display:flex;align-items:center;justify-content:center;
   width:36px;height:36px;border-radius:50%;cursor:pointer;
@@ -1013,6 +1015,8 @@ audio{display:none}
       <div class="aud-track" id="aud-track">—</div>
       <div class="aud-sub"   id="aud-sub">audio</div>
     </div>
+  </div>
+  <div class="vaud-controls">
     <div class="aud-player">
       <div class="aud-seek-wrap" id="aud-seek">
         <div class="aud-seek-track">
@@ -1125,7 +1129,7 @@ const _DEFAULT_SERVER = (window.VaultBridge && window.VaultBridge.getServerUrl)
 // Always use the live getter so fetch-time resolution takes effect
 function getServer(){ return window._resolvedServer || _DEFAULT_SERVER; }
 const SERVER = _DEFAULT_SERVER; // kept for any direct references
-const PAGE   = 10;
+const PAGE   = 30;
 
 // ── Auth token storage ──
 let _vaultToken = localStorage.getItem('vault_token') || '';
@@ -1223,7 +1227,14 @@ async function selectAndLoad(el, path){
       throw new Error(msg);
     }
     $('dir-modal').classList.remove('open');
-    doFetchServer(true); // skip health check — server just responded successfully
+    // Clear existing server items and load fresh from the selected directory
+    S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
+    S.items=[];
+    _imgElCache.clear();
+    S.pagination = {all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
+    hideEndOfList();
+    await loadPage(0,true);
+    setupScroll();
   }catch(e){
     $('dir-sub').textContent = e.message || 'Failed to load — try again';
     el.classList.remove('selected');
@@ -1236,7 +1247,7 @@ function dirCancel(e){
   $('dir-modal').classList.remove('open');
 }
 let _exitLeaveCallback=null;
-let _exitConfirmed=false;
+let _exitConfirmed=false; // reset each session — exit always requires confirmation
 
 function showExitModal(){
   $('exit-modal').classList.add('open');
@@ -1373,19 +1384,25 @@ function setSection(el){
   activeGrid.classList.add('section-enter');
   setTimeout(()=>activeGrid.classList.remove('section-enter'), 300);
   render(); updateCnt();
-  // If we have a server connection, re-fetch this section from scratch
+  // If we have a server connection, only re-fetch if section has no data yet
   const hasServerItems = S.items.some(i=>i._isServer);
   if(hasServerItems){
-    // Reset pagination for this section and reload
-    S.pagination[S.section] = {offset:0, total:0};
-    // Remove server items for this section so we can re-fetch fresh
-    const sectionType = S.section === 'all' ? null : S.section;
-    S.items = S.items.filter(i=>i._isLocal || (sectionType ? i.type !== sectionType : false));
-    if(S.section === 'all') S.items = S.items.filter(i=>i._isLocal);
-    hideEndOfList();
-    showSkeleton();
-    setupScroll();
-    loadPage(0, true);
+    const sec = S.section;
+    const sectionItems = sec==='all' ? S.items.filter(i=>i._isServer) : S.items.filter(i=>i._isServer && i.type===sec);
+    if(sectionItems.length === 0){
+      // No items for this section yet — fetch them
+      S.pagination[sec] = {offset:0, total:0};
+      hideEndOfList();
+      showSkeleton();
+      setupScroll();
+      loadPage(0, true);
+    } else {
+      // Already have items — just re-render, maybe fetch more if not complete
+      const pg = S.pagination[sec];
+      if(pg.total > 0 && sectionItems.length < pg.total){
+        setupScroll(); // re-attach scroll so infinite load still works
+      }
+    }
   }
 }
 
@@ -1488,104 +1505,129 @@ async function pickDirectoryWithBatches(dir){
 }
 
 async function _pickDirectoryNative(){
-  // Request storage permission first
   const granted = await new Promise(resolve=>{
-    window.VaultBridge.requestStoragePermission('window._storagePermResult');
     window._storagePermResult = (ok) => resolve(ok);
+    window.VaultBridge.requestStoragePermission('window._storagePermResult');
   });
-  if(!granted){
-    alert('Storage permission is required to browse device files.');
-    return;
-  }
+  if(!granted){ alert('Storage permission is required to browse device files.'); return; }
 
-  // Show native directory browser modal
   return new Promise((resolve)=>{
     let currentPath = 'root';
     const pathStack = [];
 
     const modal = document.createElement('div');
-    modal.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(7,7,10,.95);display:flex;flex-direction:column;backdrop-filter:blur(4px)';
+    modal.id = '_native-dir-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9500;background:var(--bg);display:flex;flex-direction:column;animation:viewerSlideUp .22s cubic-bezier(.25,.46,.45,.94) both';
 
     const header = document.createElement('div');
-    header.style.cssText='display:flex;align-items:center;gap:10px;padding:16px 16px 10px;border-bottom:1px solid #1e1e28';
+    header.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px 10px;padding-top:calc(12px + var(--sat));background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0';
 
-    const backBtn = document.createElement('button');
-    backBtn.innerHTML='<i class="ti ti-arrow-left"></i>';
-    backBtn.style.cssText='background:none;border:none;color:#b8ff57;font-size:18px;padding:4px 8px;cursor:pointer;display:none';
+    const backBtn = document.createElement('div');
+    backBtn.style.cssText = 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:var(--accent);flex-shrink:0;opacity:0;pointer-events:none;transition:opacity .15s';
+    backBtn.innerHTML = '<i class=\"ti ti-arrow-left\" style=\"font-size:18px\"></i>';
 
+    const titleWrap = document.createElement('div');
+    titleWrap.style.cssText = 'flex:1;min-width:0';
     const titleEl = document.createElement('div');
-    titleEl.style.cssText='flex:1;font-size:14px;font-weight:500;color:var(--text);letter-spacing:.02em';
-    titleEl.textContent='Choose a folder';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML='<i class="ti ti-x"></i>';
-    closeBtn.style.cssText='background:none;border:none;color:var(--text3);font-size:18px;padding:4px 8px;cursor:pointer';
-
+    titleEl.style.cssText = 'font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    titleEl.textContent = 'Choose a folder';
+    const breadcrumb = document.createElement('div');
+    breadcrumb.style.cssText = 'font-size:10px;color:var(--text3);font-family:\"IBM Plex Mono\",monospace;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    breadcrumb.textContent = 'Device storage';
+    titleWrap.appendChild(titleEl);
+    titleWrap.appendChild(breadcrumb);
     header.appendChild(backBtn);
-    header.appendChild(titleEl);
-    header.appendChild(closeBtn);
+    header.appendChild(titleWrap);
 
     const list = document.createElement('div');
-    list.style.cssText='flex:1;overflow-y:auto;padding:8px 0';
+    list.style.cssText = 'flex:1;overflow-y:auto;padding:6px 0;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent';
 
-    const loadBtn = document.createElement('div');
-    loadBtn.style.cssText='padding:16px;border-top:1px solid #1e1e28';
-    const confirmBtn = document.createElement('button');
-    confirmBtn.style.cssText='width:100%;padding:13px;background:#b8ff57;color:#07070a;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.04em';
-    confirmBtn.textContent='LOAD THIS FOLDER';
-    confirmBtn.style.display='none';
-    loadBtn.appendChild(confirmBtn);
+    const footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;gap:10px;padding:12px 14px;padding-bottom:calc(12px + var(--sab));background:var(--bg1);border-top:1px solid var(--border);flex-shrink:0';
 
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Close';
+    closeBtn.style.cssText = 'flex:1;padding:12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);font-size:13px;font-family:inherit;cursor:pointer';
+
+    const loadBtn = document.createElement('button');
+    loadBtn.textContent = 'Load this folder';
+    loadBtn.style.cssText = 'flex:2;padding:12px;background:var(--accent);border:none;border-radius:var(--r);color:var(--bg);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:none;letter-spacing:.02em';
+
+    footer.appendChild(closeBtn);
+    footer.appendChild(loadBtn);
     modal.appendChild(header);
     modal.appendChild(list);
-    modal.appendChild(loadBtn);
+    modal.appendChild(footer);
     document.body.appendChild(modal);
 
-    function showDirs(path){
-      currentPath = path;
-      list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Loading\u2026</div>';
-      confirmBtn.style.display = path!=='root'?'block':'none';
-      backBtn.style.display = pathStack.length>0?'block':'none';
-
-      const dirs = JSON.parse(window.VaultBridge.listDirectories(path));
-      list.innerHTML='';
-      if(!dirs.length){
-        list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No subfolders found</div>';
-        return;
-      }
-      dirs.forEach(d=>{
-        const row = document.createElement('div');
-        row.style.cssText='display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #111116;active:background:#1a1a22';
-        row.innerHTML=`<i class="ti ti-folder" style="color:#b8ff57;font-size:18px;flex-shrink:0"></i><span style="flex:1;font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</span><i class="ti ti-chevron-right" style="color:var(--text3);font-size:14px"></i>`;
-        row.addEventListener('click',()=>{
-          pathStack.push(currentPath);
-          titleEl.textContent=d.name;
-          showDirs(d.path);
-        });
-        list.appendChild(row);
-      });
+    function closeModal(){
+      if(modal.parentNode) document.body.removeChild(modal);
+      window._nativeDirBack = null;
+      resolve();
     }
 
-    backBtn.addEventListener('click',()=>{
-      if(pathStack.length>0){
-        currentPath=pathStack.pop();
-        titleEl.textContent=pathStack.length===0?'Choose a folder':currentPath.split('/').pop();
-        showDirs(currentPath);
+    function goBack(){
+      if(pathStack.length > 0){
+        const prev = pathStack.pop();
+        currentPath = prev.path;
+        titleEl.textContent = prev.title;
+        breadcrumb.textContent = prev.crumb;
+        showDirs(currentPath, false);
       }
-    });
+    }
 
-    closeBtn.addEventListener('click',()=>{
-      document.body.removeChild(modal);
-      resolve();
-    });
+    function showDirs(path, pushCurrent){
+      if(pushCurrent){
+        pathStack.push({ path: currentPath, title: titleEl.textContent, crumb: breadcrumb.textContent });
+      }
+      currentPath = path;
+      backBtn.style.opacity = pathStack.length > 0 ? '1' : '0';
+      backBtn.style.pointerEvents = pathStack.length > 0 ? 'auto' : 'none';
+      loadBtn.style.display = path !== 'root' ? 'block' : 'none';
+      list.innerHTML = '<div style=\"padding:28px;text-align:center;color:var(--text3);font-size:12px;font-family:\'IBM Plex Mono\',monospace\">Loading\u2026</div>';
+      try{
+        const dirs = JSON.parse(window.VaultBridge.listDirectories(path));
+        list.innerHTML = '';
+        if(!dirs.length){
+          list.innerHTML = '<div style=\"padding:28px;text-align:center;color:var(--text3);font-size:12px;font-family:\'IBM Plex Mono\',monospace\">No subfolders found</div>';
+          return;
+        }
+        dirs.forEach(d=>{
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--border);-webkit-tap-highlight-color:transparent';
+          const icon = document.createElement('div');
+          icon.style.cssText = 'width:36px;height:36px;border-radius:9px;background:rgba(184,255,87,.08);border:1px solid rgba(184,255,87,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0';
+          icon.innerHTML = '<i class=\"ti ti-folder-filled\" style=\"font-size:17px;color:var(--accent)\"></i>';
+          const nameEl = document.createElement('div');
+          nameEl.style.cssText = 'flex:1;font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+          nameEl.textContent = d.name;
+          const arr = document.createElement('i');
+          arr.className = 'ti ti-chevron-right';
+          arr.style.cssText = 'font-size:14px;color:var(--text3);flex-shrink:0';
+          row.appendChild(icon); row.appendChild(nameEl); row.appendChild(arr);
+          row.addEventListener('touchstart',()=>{ row.style.background='var(--bg2)'; },{passive:true});
+          row.addEventListener('touchend',()=>{ row.style.background=''; },{passive:true});
+          row.addEventListener('click',()=>{
+            const crumb = d.path.replace('/storage/emulated/0','').replace(/\/$/, '') || '/';
+            titleEl.textContent = d.name;
+            breadcrumb.textContent = crumb;
+            showDirs(d.path, true);
+          });
+          list.appendChild(row);
+        });
+      }catch(e){
+        list.innerHTML = '<div style=\"padding:28px;text-align:center;color:var(--red);font-size:12px\">Error reading directory</div>';
+      }
+    }
 
-    confirmBtn.addEventListener('click',()=>{
-      document.body.removeChild(modal);
-      _loadNativeDirectory(currentPath);
-      resolve();
-    });
+    backBtn.addEventListener('click', goBack);
+    closeBtn.addEventListener('click', closeModal);
+    loadBtn.addEventListener('click', ()=>{ closeModal(); _loadNativeDirectory(currentPath); });
 
-    showDirs('root');
+    // Allow Android back button to navigate dirs in-picker
+    window._nativeDirBack = ()=>{ if(pathStack.length > 0){ goBack(); } else { closeModal(); } };
+
+    showDirs('root', false);
   });
 }
 
@@ -1802,15 +1844,10 @@ async function doFetchServer(skipHealth=false){
     setSrvStatus(true);
     closeSidebarMobile();
     $('sidebar').classList.add('collapsed');
-    S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
-    S.items=[];
-    _imgElCache.clear();
-    S.pagination = {all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
-    hideEndOfList();
-    // If token exists, go straight to fetching; otherwise show auth modal
+    hideProbeOverlay();
+    // Always ask which directory to load — every time fetch is clicked
     if(_vaultToken){
-      await loadPage(0,true);
-      setupScroll();
+      showDirModal();
     } else {
       showAuthModal();
     }
@@ -3077,6 +3114,38 @@ window.addEventListener('beforeunload',e=>{
 // Seed history so first back press always hits our popstate handler
 history.replaceState({vault:'inner'},'');
 history.pushState({vault:'base'},'');
+
+// Android back button handler — called by Java instead of goBack()
+window._handleAndroidBack = function(){
+  // If native dir picker is open, let it handle back
+  if(window._nativeDirBack){ window._nativeDirBack(); return; }
+  // Close exit modal if open
+  if($('exit-modal').classList.contains('open')){ exitCancel(); return; }
+  // Close any open viewer first
+  const open=['img','vid','aud'].find(k=>document.getElementById('v'+k).classList.contains('open'));
+  if(open){
+    if(open==='aud'&&!audEl.paused){
+      $('vaud').classList.remove('open');
+      document.body.style.overflow='';
+      $('mini-player').classList.add('visible');
+    } else { closeV(open); }
+    return;
+  }
+  // Close sidebar if open on mobile
+  if(window.innerWidth<=768 && $('sidebar').classList.contains('sb-open')){
+    closeSidebarMobile(); return;
+  }
+  // Navigate section history back
+  if(_sectionHistory.length>1){
+    _sectionHistory.pop();
+    const prev=_sectionHistory[_sectionHistory.length-1];
+    const el=document.querySelector(`.nav-item[data-t="${prev}"]`);
+    if(el) _origSetSection(el);
+    return;
+  }
+  // Nothing left — show exit confirm (always, every time)
+  showExitModal();
+};
 
 // ════════════════════════════════
 // UI HELPERS
