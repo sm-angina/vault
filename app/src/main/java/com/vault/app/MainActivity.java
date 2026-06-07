@@ -52,6 +52,31 @@ public class MainActivity extends Activity {
     // ── JS Bridge ─────────────────────────────────────────────────────────────
     public class VaultBridge {
 
+        /** Hide status bar — call when opening image/video viewer */
+        @JavascriptInterface
+        public void hideStatusBar() {
+            mHandler.post(() -> {
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                );
+            });
+        }
+
+        /** Show status bar — call when closing image/video viewer */
+        @JavascriptInterface
+        public void showStatusBar() {
+            mHandler.post(() -> {
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                );
+            });
+        }
+
         /** Returns status bar height in CSS pixels (dp) for the sidebar offset */
         @JavascriptInterface
         public int getStatusBarHeight() {

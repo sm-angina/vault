@@ -963,6 +963,11 @@ audio{display:none}
     <span class="vvid-name" id="vid-name"></span>
   </div>
   <div class="vvid-stage" id="vvid-stage">
+    <!-- Loading spinner shown while video is buffering -->
+    <div id="vid-loading" style="display:none;position:absolute;inset:0;z-index:20;align-items:center;justify-content:center;background:rgba(0,0,0,.6);flex-direction:column;gap:14px">
+      <div style="width:44px;height:44px;border:3px solid rgba(184,255,87,.15);border-top-color:#b8ff57;border-radius:50%;animation:spin .7s linear infinite"></div>
+      <span style="font-size:11px;color:rgba(255,255,255,.4);font-family:'IBM Plex Mono',monospace;letter-spacing:.06em">Loading…</span>
+    </div>
     <video id="vid-el" playsinline preload="metadata"></video>
     <div class="vid-seek-ripple" id="vid-ripple-l"><i class="ti ti-rewind"></i><span>10s</span></div>
     <div class="vid-seek-ripple" id="vid-ripple-r"><i class="ti ti-fast-forward"></i><span>10s</span></div>
@@ -1227,8 +1232,8 @@ async function selectAndLoad(el, path){
       throw new Error(msg);
     }
     $('dir-modal').classList.remove('open');
-    // Clear existing server items and load fresh from the selected directory
-    S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
+    // Clear ALL items (server + local) so nothing mixes
+    S.items.forEach(i=>{ if(i._local && !i._isServer) try{ URL.revokeObjectURL(i._local); }catch(e){} });
     S.items=[];
     _imgElCache.clear();
     S.pagination = {all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
@@ -1555,8 +1560,23 @@ async function _pickDirectoryNative(){
 
     footer.appendChild(closeBtn);
     footer.appendChild(loadBtn);
+
+    // Preview panel — shown when a dir is selected
+    const preview = document.createElement('div');
+    preview.id = '_dir-preview';
+    preview.style.cssText = 'flex-shrink:0;max-height:160px;overflow:hidden;border-top:1px solid var(--border);display:none;flex-direction:column';
+    const prevHeader = document.createElement('div');
+    prevHeader.id = '_dir-prev-hdr';
+    prevHeader.style.cssText = 'font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;padding:8px 14px 4px;letter-spacing:.04em';
+    const prevGrid = document.createElement('div');
+    prevGrid.id = '_dir-prev-grid';
+    prevGrid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:0 14px 10px;overflow:hidden';
+    preview.appendChild(prevHeader);
+    preview.appendChild(prevGrid);
+
     modal.appendChild(header);
     modal.appendChild(list);
+    modal.appendChild(preview);
     modal.appendChild(footer);
     document.body.appendChild(modal);
 
@@ -1612,12 +1632,45 @@ async function _pickDirectoryNative(){
             titleEl.textContent = d.name;
             breadcrumb.textContent = crumb;
             showDirs(d.path, true);
+            updatePreview(d.path);
           });
           list.appendChild(row);
         });
       }catch(e){
         list.innerHTML = '<div style=\"padding:28px;text-align:center;color:var(--red);font-size:12px\">Error reading directory</div>';
       }
+    }
+
+    function updatePreview(path){
+      const prevPanel = document.getElementById('_dir-preview');
+      const prevHdr   = document.getElementById('_dir-prev-hdr');
+      const prevGrid  = document.getElementById('_dir-prev-grid');
+      if(!prevPanel || path==='root'){ if(prevPanel) prevPanel.style.display='none'; return; }
+      try{
+        const files = JSON.parse(window.VaultBridge.listMediaFiles(path)).slice(0,20);
+        if(!files.length){ prevPanel.style.display='none'; return; }
+        const imgs = files.filter(f=>f.type==='image').slice(0,10);
+        const total = files.length;
+        prevHdr.textContent = total + ' media file' + (total!==1?'s':'') + ' found';
+        prevGrid.innerHTML = '';
+        (imgs.length ? imgs : files.slice(0,10)).forEach(f=>{
+          const cell = document.createElement('div');
+          cell.style.cssText = 'aspect-ratio:1;border-radius:5px;overflow:hidden;background:var(--bg3);border:1px solid var(--border)';
+          if(f.type==='image'){
+            const img = document.createElement('img');
+            img.src = 'file://'+f.path.split('/').map(encodeURIComponent).join('/');
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+            img.onerror = ()=>{ cell.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:14px;color:var(--text3)"></i></div>'; };
+            cell.appendChild(img);
+          } else {
+            const ico = f.type==='video'?'ti-video':'ti-music';
+            cell.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="ti '+ico+'" style="font-size:14px;color:var(--text3)"></i></div>';
+          }
+          prevGrid.appendChild(cell);
+        });
+        prevPanel.style.display = 'flex';
+        prevPanel.style.flexDirection = 'column';
+      }catch(e){ prevPanel.style.display='none'; }
     }
 
     backBtn.addEventListener('click', goBack);
@@ -1638,8 +1691,8 @@ async function _loadNativeDirectory(dirPath){
   $('scan-progress').style.display='flex';
   $('scan-count').textContent='0 files found';
 
-  // Revoke existing local URLs
-  S.items.forEach(i=>{ if(i._local) URL.revokeObjectURL(i._local); });
+  // Clear ALL items (server + local) so nothing mixes
+  S.items.forEach(i=>{ if(i._local && !i._isServer) try{ URL.revokeObjectURL(i._local); }catch(e){} });
   S.items=[]; _imgElCache.clear();
   S.pagination={all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
   hideEndOfList(); render(); updateCnt(); updateBadges();
@@ -1664,7 +1717,7 @@ async function _loadNativeDirectory(dirPath){
           modified: f.modified,
           width:null, height:null, duration:null,
           // Use file:// URL directly — WebView can access local files
-          _local: 'file://'+f.path,
+          _local: 'file://'+f.path.split('/').map(encodeURIComponent).join('/'),
           _isLocal: true,
         };
         S.items.push(item);
@@ -2192,6 +2245,8 @@ function openItem(gIdx){
     document.body.style.overflow='hidden';
     history.pushState({viewer:'img'},'');
     preloadAdjacentImages();
+    // Hide status bar in viewer; reset bar padding
+    if(window.VaultBridge){ window.VaultBridge.hideStatusBar(); $('vimg').style.setProperty('--sat','0px'); }
   } else {
     openV(vk, tItems[S.vi[vk]]);
   }
@@ -2222,6 +2277,8 @@ function openV(vk, item){
     _speedIdx=2; vidEl.playbackRate=1; $('vid-speed-btn').textContent='1×';
     $('vvid').classList.add('open');
     document.body.style.overflow='hidden';
+    // Hide status bar in viewer; reset bar padding
+    if(window.VaultBridge){ window.VaultBridge.hideStatusBar(); $('vvid').style.setProperty('--sat','0px'); }
 
   } else {
     $('aud-bar-name').textContent=item.name;
@@ -2256,6 +2313,13 @@ function updateImgCounter(tItems){
 function closeV(vk){
   document.getElementById('v'+vk).classList.remove('open');
   document.body.style.overflow='';
+  // Restore status bar when leaving image or video viewer
+  if(vk==='img'||vk==='vid'){
+    if(window.VaultBridge){ window.VaultBridge.showStatusBar(); }
+    // Restore --sat so other UI elements get their padding back
+    const sbh = window.VaultBridge ? window.VaultBridge.getStatusBarHeight() : 0;
+    document.documentElement.style.setProperty('--sat', sbh+'px');
+  }
   if(vk==='vid'){const v=$('vid-el');v.pause();v.src='';}
   if(vk==='aud' && !$('aud-el').paused){
     // don't stop audio, show mini player instead
@@ -2693,6 +2757,12 @@ vidProgEl.addEventListener('touchend',e=>{
 },{passive:false});
 
 // ── Time + buffer update ──
+// Show/hide loading spinner while video buffers
+vidEl.addEventListener('waiting',()=>{ const el=$('vid-loading'); if(el) el.style.display='flex'; });
+vidEl.addEventListener('playing',()=>{ const el=$('vid-loading'); if(el) el.style.display='none'; });
+vidEl.addEventListener('canplay',()=>{ const el=$('vid-loading'); if(el) el.style.display='none'; });
+vidEl.addEventListener('loadstart',()=>{ const el=$('vid-loading'); if(el) el.style.display='flex'; });
+
 vidEl.addEventListener('timeupdate',()=>{
   if(vidProgDragging) return;
   const p=vidEl.duration?(vidEl.currentTime/vidEl.duration)*100:0;
