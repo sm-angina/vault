@@ -27,16 +27,16 @@ body{height:100%;height:100dvh;overflow:hidden}
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
 }
-body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;display:flex;flex-direction:column;padding-top:var(--sat);padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar)}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;display:flex;flex-direction:column;padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar)}
 img{-webkit-user-drag:none;user-select:none}
 
-/* ── Android WebView: sidebar must clear the status bar ── */
-.sb-inner{padding-top:var(--sat)}
+/* ── Android WebView: sidebar must clear the status bar (mobile override in media query) ── */
 
 /* ═══ TOPBAR ═══ */
 .topbar{
-  height:var(--topbar);flex-shrink:0;
-  display:flex;align-items:center;gap:8px;padding:0 14px;
+  height:calc(var(--topbar) + var(--sat));flex-shrink:0;
+  display:flex;align-items:flex-end;gap:8px;
+  padding:0 14px 0;padding-top:var(--sat);
   background:var(--bg1);border-bottom:1px solid var(--border);
   position:relative;z-index:80;
 }
@@ -841,6 +841,7 @@ audio{display:none}
     opacity:1!important;pointer-events:none;
     transition:transform .22s cubic-bezier(.4,0,.2,1);
   }
+  .sb-inner{padding-top:calc(var(--sat) + var(--topbar))!important}
   .sidebar.sb-open{transform:translateX(0);pointer-events:auto}
   .sidebar.collapsed{transform:translateX(-100%);opacity:1!important}
 }

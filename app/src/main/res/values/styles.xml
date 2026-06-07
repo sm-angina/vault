@@ -2,9 +2,10 @@
 <resources>
     <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">#07070a</item>
-        <item name="android:statusBarColor">#07070a</item>
+        <item name="android:statusBarColor">#0c0c10</item>
         <item name="android:navigationBarColor">#07070a</item>
-        <item name="android:windowTranslucentStatus">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
     </style>
 </resources>

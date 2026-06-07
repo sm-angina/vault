@@ -70,10 +70,7 @@ public class MainActivity extends Activity {
         public void showStatusBar() {
             mHandler.post(() -> {
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                );
+                getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
             });
         }
 
@@ -301,12 +298,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Keep title bar removed, but KEEP status bar visible
+        // Keep title bar removed, status bar visible and solid
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-        // Translucent status bar so the app colour shows through
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        // Do NOT use FLAG_TRANSLUCENT_STATUS — it causes layout issues with WebView touch targets
 
         // Root layout
         FrameLayout root = new FrameLayout(this);
@@ -353,10 +348,10 @@ public class MainActivity extends Activity {
             }
             @Override
             public void onPageFinished(WebView view, String url) {
-                // Inject real status bar height so sidebar clears the status bar
-                int sbh = new VaultBridge().getStatusBarHeight();
+                // Status bar is solid — no inset injection needed.
+                // Set --sat to 0 so topbar/viewer padding calculations are correct.
                 view.evaluateJavascript(
-                    "document.documentElement.style.setProperty('--sat','" + sbh + "px')", null);
+                    "document.documentElement.style.setProperty('--sat','0px')", null);
             }
         });
 
