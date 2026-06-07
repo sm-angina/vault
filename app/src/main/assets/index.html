@@ -302,6 +302,28 @@ img{-webkit-user-drag:none;user-select:none}
 .skel-grid-card:nth-child(8),.skel-masonry-card:nth-child(8){animation-delay:.21s}
 .skel-masonry-line:nth-child(2){animation-delay:.15s}
 
+/* ── Video loading animation keyframes ── */
+@keyframes vidLoadRing{
+  0%  { stroke-dashoffset: 0;   transform: rotate(0deg); }
+  100%{ stroke-dashoffset: -251.9; transform: rotate(360deg); }
+}
+@keyframes vidLoadPulse{
+  0%,100%{ r:28; opacity:0.07; }
+  50%     { r:34; opacity:0.18; }
+}
+@keyframes vidLoadPlay{
+  0%,100%{ opacity:0.85; transform:scale(1); }
+  50%     { opacity:1;    transform:scale(1.08); }
+}
+@keyframes vidLoadOrbit{
+  0%  { transform: rotate(0deg)   translateX(40px) rotate(0deg); }
+  100%{ transform: rotate(360deg) translateX(40px) rotate(-360deg); }
+}
+@keyframes vidLoadOrbit2{
+  0%  { transform: rotate(180deg) translateX(40px) rotate(-180deg); }
+  100%{ transform: rotate(540deg) translateX(40px) rotate(-540deg); }
+}
+
 /* viewer open animation */
 @keyframes viewerIn{
   from{opacity:0;transform:scale(1.03)}
@@ -337,6 +359,12 @@ img{-webkit-user-drag:none;user-select:none}
   padding:0 14px calc(8px);padding-top:var(--sat);
   background:linear-gradient(to bottom,rgba(0,0,0,.7),transparent);
   z-index:10;
+}
+/* When status bar hidden (--sat=0), center items vertically */
+#vimg[data-sb-hidden] .vimg-bar{
+  align-items:center;
+  padding-top:0;
+  padding-bottom:0;
 }
 .v-close{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);cursor:pointer;color:rgba(255,255,255,.7);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);flex-shrink:0;transition:color .15s;-webkit-tap-highlight-color:transparent}
 .v-close:hover,.v-close:active{color:#fff}
@@ -394,6 +422,12 @@ img{-webkit-user-drag:none;user-select:none}
   padding:0 8px 6px 2px;padding-top:var(--sat);
   background:linear-gradient(to bottom,rgba(0,0,0,.78) 0%,transparent 100%);
   opacity:0;transition:opacity .22s;pointer-events:none;
+}
+/* When status bar hidden (--sat=0), center items vertically */
+#vvid[data-sb-hidden] .vvid-bar{
+  align-items:center;
+  padding-top:0;
+  padding-bottom:0;
 }
 .vvid-bar.visible{opacity:1;pointer-events:all}
 .vvid-name{
@@ -964,10 +998,26 @@ audio{display:none}
     <span class="vvid-name" id="vid-name"></span>
   </div>
   <div class="vvid-stage" id="vvid-stage">
-    <!-- Loading spinner shown while video is buffering -->
-    <div id="vid-loading" style="display:none;position:absolute;inset:0;z-index:20;align-items:center;justify-content:center;background:rgba(0,0,0,.6);flex-direction:column;gap:14px">
-      <div style="width:44px;height:44px;border:3px solid rgba(184,255,87,.15);border-top-color:#b8ff57;border-radius:50%;animation:spin .7s linear infinite"></div>
-      <span style="font-size:11px;color:rgba(255,255,255,.4);font-family:'IBM Plex Mono',monospace;letter-spacing:.06em">Loading…</span>
+    <!-- Loading animation shown while video is buffering -->
+    <div id="vid-loading" style="display:none;position:absolute;inset:0;z-index:20;align-items:center;justify-content:center;background:rgba(0,0,0,.72);flex-direction:column;gap:0">
+      <svg id="vid-load-svg" width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+        <!-- Outer ring: rotates -->
+        <circle cx="48" cy="48" r="40" stroke="rgba(184,255,87,0.12)" stroke-width="2.5"/>
+        <circle cx="48" cy="48" r="40" stroke="#b8ff57" stroke-width="2.5" stroke-linecap="round"
+          stroke-dasharray="60 191.9"
+          style="transform-origin:48px 48px;animation:vidLoadRing 1.1s cubic-bezier(.4,0,.2,1) infinite"/>
+        <!-- Inner pulse ring -->
+        <circle cx="48" cy="48" r="28" stroke="rgba(184,255,87,0.07)" stroke-width="1.5"
+          style="transform-origin:48px 48px;animation:vidLoadPulse 1.8s ease-in-out infinite"/>
+        <!-- Play triangle — center icon -->
+        <polygon points="40,34 64,48 40,62" fill="rgba(184,255,87,0.9)"
+          style="transform-origin:48px 48px;animation:vidLoadPlay 1.8s ease-in-out infinite"/>
+        <!-- Dots orbiting -->
+        <circle r="3" fill="#b8ff57" opacity="0.7"
+          style="transform-origin:48px 48px;animation:vidLoadOrbit 2.2s linear infinite"/>
+        <circle r="2" fill="#b8ff57" opacity="0.35"
+          style="transform-origin:48px 48px;animation:vidLoadOrbit2 2.2s linear infinite"/>
+      </svg>
     </div>
     <video id="vid-el" playsinline preload="metadata"></video>
     <div class="vid-seek-ripple" id="vid-ripple-l"><i class="ti ti-rewind"></i><span>10s</span></div>
@@ -1605,12 +1655,73 @@ async function _pickDirectoryNative(){
       backBtn.style.opacity = pathStack.length > 0 ? '1' : '0';
       backBtn.style.pointerEvents = pathStack.length > 0 ? 'auto' : 'none';
       loadBtn.style.display = path !== 'root' ? 'block' : 'none';
-      list.innerHTML = '<div style=\"padding:28px;text-align:center;color:var(--text3);font-size:12px;font-family:\'IBM Plex Mono\',monospace\">Loading\u2026</div>';
+      list.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text3);font-size:12px;font-family:\'IBM Plex Mono\',monospace">Loading…</div>';
       try{
         const dirs = JSON.parse(window.VaultBridge.listDirectories(path));
         list.innerHTML = '';
-        if(!dirs.length){
-          list.innerHTML = '<div style=\"padding:28px;text-align:center;color:var(--text3);font-size:12px;font-family:\'IBM Plex Mono\',monospace\">No subfolders found</div>';
+
+        // If navigated into a subfolder, show file grid first then subfolders
+        if(path !== 'root'){
+          // Show a mini file grid for this dir
+          try{
+            const files = JSON.parse(window.VaultBridge.listMediaFiles(path));
+            if(files.length){
+              // Section header
+              const secHdr = document.createElement('div');
+              secHdr.style.cssText = 'font-size:10px;color:var(--text3);font-family:"IBM Plex Mono",monospace;padding:10px 16px 6px;letter-spacing:.06em;text-transform:uppercase';
+              secHdr.textContent = files.length + ' media file' + (files.length!==1?'s':'');
+              list.appendChild(secHdr);
+
+              // File grid
+              const grid = document.createElement('div');
+              grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 12px 12px';
+              files.slice(0,20).forEach(f=>{
+                const cell = document.createElement('div');
+                cell.style.cssText = 'aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--bg3);border:1px solid var(--border);position:relative';
+                if(f.type==='image'){
+                  const img = document.createElement('img');
+                  img.src = 'file://' + f.path.split('/').map((seg,i) => i===0 ? seg : encodeURIComponent(seg)).join('/');
+                  img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+                  img.onerror = ()=>{ cell.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:16px;color:var(--text3)"></i></div>'; };
+                  cell.appendChild(img);
+                } else {
+                  const ico = f.type==='video' ? 'ti-video' : 'ti-music';
+                  const color = f.type==='video' ? 'var(--red)' : 'var(--accent)';
+                  cell.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="ti '+ico+'" style="font-size:18px;color:'+color+'"></i></div>';
+                }
+                grid.appendChild(cell);
+              });
+              if(files.length > 20){
+                const more = document.createElement('div');
+                more.style.cssText = 'aspect-ratio:1;border-radius:6px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);font-family:"IBM Plex Mono",monospace';
+                more.textContent = '+' + (files.length-20);
+                grid.appendChild(more);
+              }
+              list.appendChild(grid);
+
+              // Divider
+              if(dirs.length){
+                const div = document.createElement('div');
+                div.style.cssText = 'height:1px;background:var(--border);margin:0 12px 4px';
+                list.appendChild(div);
+                const subHdr = document.createElement('div');
+                subHdr.style.cssText = 'font-size:10px;color:var(--text3);font-family:"IBM Plex Mono",monospace;padding:8px 16px 4px;letter-spacing:.06em;text-transform:uppercase';
+                subHdr.textContent = 'Subfolders';
+                list.appendChild(subHdr);
+              }
+            }
+          }catch(e){ /* ignore file listing error, show dirs anyway */ }
+        }
+
+        if(!dirs.length && path === 'root'){
+          list.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text3);font-size:12px;font-family:\'IBM Plex Mono\',monospace">No subfolders found</div>';
+          return;
+        }
+        if(!dirs.length && path !== 'root'){
+          // No subdirs, we already showed files above
+          if(!list.children.length){
+            list.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text3);font-size:12px;font-family:\'IBM Plex Mono\',monospace">No subfolders found</div>';
+          }
           return;
         }
         dirs.forEach(d=>{
@@ -1618,7 +1729,7 @@ async function _pickDirectoryNative(){
           row.style.cssText = 'display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--border);-webkit-tap-highlight-color:transparent';
           const icon = document.createElement('div');
           icon.style.cssText = 'width:36px;height:36px;border-radius:9px;background:rgba(184,255,87,.08);border:1px solid rgba(184,255,87,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0';
-          icon.innerHTML = '<i class=\"ti ti-folder-filled\" style=\"font-size:17px;color:var(--accent)\"></i>';
+          icon.innerHTML = '<i class="ti ti-folder-filled" style="font-size:17px;color:var(--accent)"></i>';
           const nameEl = document.createElement('div');
           nameEl.style.cssText = 'flex:1;font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
           nameEl.textContent = d.name;
@@ -1638,7 +1749,7 @@ async function _pickDirectoryNative(){
           list.appendChild(row);
         });
       }catch(e){
-        list.innerHTML = '<div style=\"padding:28px;text-align:center;color:var(--red);font-size:12px\">Error reading directory</div>';
+        list.innerHTML = '<div style="padding:28px;text-align:center;color:var(--red);font-size:12px">Error reading directory</div>';
       }
     }
 
@@ -1659,7 +1770,7 @@ async function _pickDirectoryNative(){
           cell.style.cssText = 'aspect-ratio:1;border-radius:5px;overflow:hidden;background:var(--bg3);border:1px solid var(--border)';
           if(f.type==='image'){
             const img = document.createElement('img');
-            img.src = 'file://'+f.path.split('/').map(encodeURIComponent).join('/');
+            img.src = 'file://' + f.path.split('/').map((seg,i) => i===0 ? seg : encodeURIComponent(seg)).join('/');
             img.style.cssText = 'width:100%;height:100%;object-fit:cover';
             img.onerror = ()=>{ cell.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:14px;color:var(--text3)"></i></div>'; };
             cell.appendChild(img);
@@ -1692,10 +1803,12 @@ async function _loadNativeDirectory(dirPath){
   $('scan-progress').style.display='flex';
   $('scan-count').textContent='0 files found';
 
-  // Clear ALL items (server + local) so nothing mixes
+  // Clear ALL items (both server and local) so nothing mixes
   S.items.forEach(i=>{ if(i._local && !i._isServer) try{ URL.revokeObjectURL(i._local); }catch(e){} });
   S.items=[]; _imgElCache.clear();
   S.pagination={all:{offset:0,total:0},image:{offset:0,total:0},video:{offset:0,total:0},audio:{offset:0,total:0}};
+  // Also disconnect any active scroll observer to stop server fetches
+  if(S.observer){ S.observer.disconnect(); S.observer=null; }
   hideEndOfList(); render(); updateCnt(); updateBadges();
 
   const folderName = dirPath.split('/').pop() || dirPath;
@@ -1717,8 +1830,8 @@ async function _loadNativeDirectory(dirPath){
           size: f.size,
           modified: f.modified,
           width:null, height:null, duration:null,
-          // Use file:// URL directly — WebView can access local files
-          _local: 'file://'+f.path.split('/').map(encodeURIComponent).join('/'),
+          // Use file:// URL directly — encode each path segment but not slashes
+          _local: 'file://' + f.path.split('/').map((seg,i) => i===0 ? seg : encodeURIComponent(seg)).join('/'),
           _isLocal: true,
         };
         S.items.push(item);
@@ -1943,6 +2056,16 @@ function hideProbeOverlay(){
 async function loadPage(offset, reset=false){
   if(S.loading) return;
   S.loading=true; showLoader(true); setDot('loading');
+  // On first fetch (reset), clear any local device items so they don't mix
+  if(reset && offset===0){
+    const localItems = S.items.filter(i=>i._isLocal);
+    if(localItems.length){
+      localItems.forEach(i=>{ try{ URL.revokeObjectURL(i._local); }catch(e){} });
+      S.items = S.items.filter(i=>!i._isLocal);
+      _imgElCache.clear();
+      render(); updateCnt(); updateBadges();
+    }
+  }
   // Show skeleton only on the very first fetch (reset + no items yet)
   if(reset && offset===0 && S.items.filter(i=>i._isServer).length===0){
     showSkeleton();
@@ -2031,7 +2154,10 @@ function getOrCreateImgEl(item){
     el = document.createElement('img');
     el.alt = '';
     el.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;background:var(--bg2)';
-    const src = item._thumbUrl || item._local || item._serverUrl || '';
+    // For local items prefer _local; for server items prefer thumb then stream
+    const src = item._isLocal
+      ? (item._local || '')
+      : (item._thumbUrl || item._serverUrl || '');
     if(src) el.src = src;
     _imgElCache.set(item.id, el);
   }
@@ -2211,7 +2337,8 @@ let   _imgPreA = null;               // preload img object for prev
 let   _imgPreB = null;               // preload img object for next
 
 function _srcForItem(item){
-  return item._local || item._serverUrl || '';
+  // For local device files use _local; for server files use _serverUrl
+  return item._isLocal ? (item._local || '') : (item._serverUrl || item._local || '');
 }
 
 // Preload prev & next images into Image() objects so they're decoded before needed
@@ -2243,6 +2370,7 @@ function openItem(gIdx){
     $('img-name').textContent=item.name;
     updateImgCounter(tItems);
     $('vimg').classList.add('open');
+    $('vimg').setAttribute('data-sb-hidden','1');
     document.body.style.overflow='hidden';
     history.pushState({viewer:'img'},'');
     preloadAdjacentImages();
@@ -2255,7 +2383,8 @@ function openItem(gIdx){
 
 function openV(vk, item){
   if(!item) return;
-  const url=item._serverUrl||item._local||'';
+  // For local files use _local; for server files use _serverUrl
+  const url = item._isLocal ? (item._local || '') : (item._serverUrl || item._local || '');
 
   if(vk==='img'){
     const src=_srcForItem(item);
@@ -2277,6 +2406,7 @@ function openV(vk, item){
     // Reset speed
     _speedIdx=2; vidEl.playbackRate=1; $('vid-speed-btn').textContent='1×';
     $('vvid').classList.add('open');
+    $('vvid').setAttribute('data-sb-hidden','1');
     document.body.style.overflow='hidden';
     // Hide status bar in viewer; reset bar padding
     if(window.VaultBridge){ window.VaultBridge.hideStatusBar(); $('vvid').style.setProperty('--sat','0px'); }
@@ -2312,7 +2442,9 @@ function updateImgCounter(tItems){
 }
 
 function closeV(vk){
-  document.getElementById('v'+vk).classList.remove('open');
+  const el=document.getElementById('v'+vk);
+  el.classList.remove('open');
+  el.removeAttribute('data-sb-hidden');
   document.body.style.overflow='';
   // Restore status bar when leaving image or video viewer
   if(vk==='img'||vk==='vid'){

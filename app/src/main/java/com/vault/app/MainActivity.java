@@ -348,10 +348,15 @@ public class MainActivity extends Activity {
             }
             @Override
             public void onPageFinished(WebView view, String url) {
-                // Status bar is solid — no inset injection needed.
-                // Set --sat to 0 so topbar/viewer padding calculations are correct.
+                // Get real status bar height in dp and inject as --sat
+                int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+                int sbHeightDp = 24;
+                if (resourceId > 0) {
+                    float density = getResources().getDisplayMetrics().density;
+                    sbHeightDp = Math.round(getResources().getDimensionPixelSize(resourceId) / density);
+                }
                 view.evaluateJavascript(
-                    "document.documentElement.style.setProperty('--sat','0px')", null);
+                    "document.documentElement.style.setProperty('--sat','" + sbHeightDp + "px')", null);
             }
         });
 
